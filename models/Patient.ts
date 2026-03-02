@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import './User'; // Ensure User model is registered for population
 
 export interface IPatient {
   _id: string;
@@ -20,6 +21,7 @@ export interface IPatient {
   bloodType?: 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
   insuranceProvider?: string;
   insuranceNumber?: string;
+  assignedDoctorId?: mongoose.Schema.Types.ObjectId;
   assignedDoctor?: string;
   password?: string; // For patient login
   createdAt: Date;
@@ -106,6 +108,10 @@ const patientSchema = new mongoose.Schema<IPatient>(
       type: String,
       trim: true,
     },
+    assignedDoctorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
     assignedDoctor: {
       type: String,
       trim: true,
@@ -121,13 +127,16 @@ const patientSchema = new mongoose.Schema<IPatient>(
 );
 
 // Pre-save middleware to generate patient ID (fallback if not set in API)
-patientSchema.pre('save', function() {
+patientSchema.pre('save', function () {
   // Only generate if patientId is not already set
   if (!this.patientId) {
     // Use timestamp-based ID as fallback
-      this.patientId = `PAT-${Date.now().toString().slice(-6)}`;
+    this.patientId = `PAT-${Date.now().toString().slice(-6)}`;
   }
 });
 
-// Prevent multiple model initialization in development
+// Prevent multiple model initialization in development, and force schema updates
+if (process.env.NODE_ENV === 'development' && mongoose.models.Patient) {
+  delete mongoose.models.Patient;
+}
 export default mongoose.models.Patient || mongoose.model<IPatient>('Patient', patientSchema);

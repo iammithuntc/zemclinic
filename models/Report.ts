@@ -18,6 +18,9 @@ export interface IReport {
   assignedTo?: string;
   reviewedBy?: string;
   reviewedAt?: Date;
+  encounterId?: string;
+  admissionId?: string;
+  category?: 'GENERAL' | 'ENCOUNTER' | 'INPATIENT_ADMISSION';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -94,6 +97,19 @@ const reportSchema = new mongoose.Schema<IReport>(
     },
     reviewedAt: {
       type: Date,
+    },
+    encounterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Encounter',
+    },
+    admissionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Admission',
+    },
+    category: {
+      type: String,
+      enum: ['GENERAL', 'ENCOUNTER', 'INPATIENT_ADMISSION'],
+      default: 'GENERAL',
     },
   },
   {

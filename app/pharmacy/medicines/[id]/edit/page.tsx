@@ -47,7 +47,7 @@ function EditMedicineForm({ params }: { params: Promise<{ id: string }> }) {
       const response = await fetch(`/api/pharmacy/medicines/${resolvedParams.id}`);
       if (response.ok) {
         const medicine = await response.json();
-        
+
         // Format dates
         const formatDate = (date: string | Date | null) => {
           if (!date) return '';
@@ -449,7 +449,7 @@ function EditMedicineForm({ params }: { params: Promise<{ id: string }> }) {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('pharmacy.description')}
+                    {t('pharmacy.descriptionLabel')}
                   </label>
                   <textarea
                     rows={2}

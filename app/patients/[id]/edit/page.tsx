@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  ArrowLeft, 
-  Save, 
-  Users, 
-  Phone, 
-  Mail, 
+import {
+  ArrowLeft,
+  Save,
+  Users,
+  Phone,
+  Mail,
   Calendar,
   MapPin,
   Heart,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import ProtectedRoute from '../../../protected-route';
 import SidebarLayout from '../../../components/sidebar-layout';
+import SearchableDoctorSelect from '../../../components/SearchableDoctorSelect';
 
 export default function PatientEditPage() {
   const params = useParams();
@@ -36,6 +37,7 @@ export default function PatientEditPage() {
     address: '',
     bloodType: '',
     assignedDoctor: '',
+    assignedDoctorId: '',
     medicalHistory: '',
     emergencyContact: {
       name: '',
@@ -59,6 +61,7 @@ export default function PatientEditPage() {
             address: data.address || '',
             bloodType: data.bloodType || '',
             assignedDoctor: data.assignedDoctor || '',
+            assignedDoctorId: data.assignedDoctorId?._id || data.assignedDoctorId || '',
             medicalHistory: data.medicalHistory || '',
             emergencyContact: {
               name: data.emergencyContact?.name || '',
@@ -89,7 +92,7 @@ export default function PatientEditPage() {
       setFormData(prev => ({
         ...prev,
         [parent]: {
-          ...prev[parent as keyof typeof prev],
+          ...(prev[parent as keyof typeof prev] as Record<string, any>),
           [child]: value
         }
       }));
@@ -99,7 +102,7 @@ export default function PatientEditPage() {
         [name]: value
       }));
     }
-    
+
     if (error) setError('');
   };
 
@@ -138,8 +141,8 @@ export default function PatientEditPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <SidebarLayout 
-          title="Edit Patient" 
+        <SidebarLayout
+          title="Edit Patient"
           description="Modify patient information"
         >
           <div className="flex items-center justify-center h-64">
@@ -153,8 +156,8 @@ export default function PatientEditPage() {
   if (error && !patient) {
     return (
       <ProtectedRoute>
-        <SidebarLayout 
-          title="Patient Not Found" 
+        <SidebarLayout
+          title="Patient Not Found"
           description="The requested patient could not be found"
         >
           <div className="text-center py-12">
@@ -180,14 +183,14 @@ export default function PatientEditPage() {
 
   return (
     <ProtectedRoute>
-      <SidebarLayout 
-        title="Edit Patient" 
+      <SidebarLayout
+        title="Edit Patient"
         description="Modify patient information"
       >
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-6">
-            <Link 
+            <Link
               href={`/patients/${params.id}`}
               className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 mb-4"
             >
@@ -236,7 +239,7 @@ export default function PatientEditPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                     Email *
@@ -251,7 +254,7 @@ export default function PatientEditPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
                     Phone *
@@ -266,7 +269,7 @@ export default function PatientEditPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 mb-2">
                     Date of Birth
@@ -280,7 +283,7 @@ export default function PatientEditPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
                     Address
@@ -294,7 +297,7 @@ export default function PatientEditPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="bloodType" className="block text-sm font-medium text-gray-700 mb-2">
                     Blood Type
@@ -337,7 +340,7 @@ export default function PatientEditPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="emergencyContact.relationship" className="block text-sm font-medium text-gray-700 mb-2">
                     Relationship
@@ -351,7 +354,7 @@ export default function PatientEditPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="emergencyContact.phone" className="block text-sm font-medium text-gray-700 mb-2">
                     Contact Phone
@@ -376,17 +379,19 @@ export default function PatientEditPage() {
                   <label htmlFor="assignedDoctor" className="block text-sm font-medium text-gray-700 mb-2">
                     Assigned Doctor
                   </label>
-                  <input
-                    type="text"
-                    id="assignedDoctor"
-                    name="assignedDoctor"
+                  <SearchableDoctorSelect
                     value={formData.assignedDoctor}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g., Dr. Smith"
+                    onChange={(doctor) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        assignedDoctor: doctor?.name || '',
+                        assignedDoctorId: doctor?._id || ''
+                      }));
+                    }}
+                    placeholder="Search and select a doctor..."
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="medicalHistory" className="block text-sm font-medium text-gray-700 mb-2">
                     Medical History

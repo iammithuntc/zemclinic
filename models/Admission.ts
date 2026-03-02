@@ -84,6 +84,7 @@ export interface IAdmission extends Document {
     dischargedAt?: Date;
   };
   totalCharges?: number;
+  primaryEncounterId?: mongoose.Schema.Types.ObjectId;
   invoiceId?: mongoose.Schema.Types.ObjectId;
   createdBy: string;
   createdAt: Date;
@@ -118,8 +119,8 @@ const NursingNoteSchema: Schema = new Schema({
   note: { type: String, required: true },
   nurseId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   nurseName: { type: String, required: true },
-  category: { 
-    type: String, 
+  category: {
+    type: String,
     enum: ['routine', 'observation', 'medication', 'procedure', 'incident', 'other'],
     default: 'routine'
   },
@@ -223,9 +224,9 @@ const AdmissionSchema: Schema = new Schema(
       phone: { type: String },
     },
     dischargeInfo: {
-      dischargeType: { 
-        type: String, 
-        enum: ['normal', 'against-medical-advice', 'transfer', 'deceased'] 
+      dischargeType: {
+        type: String,
+        enum: ['normal', 'against-medical-advice', 'transfer', 'deceased']
       },
       dischargeSummary: { type: String },
       dischargeInstructions: { type: String },
@@ -236,6 +237,10 @@ const AdmissionSchema: Schema = new Schema(
       dischargedAt: { type: Date },
     },
     totalCharges: { type: Number, default: 0 },
+    primaryEncounterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Encounter',
+    },
     invoiceId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Invoice',

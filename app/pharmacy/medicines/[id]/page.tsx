@@ -319,7 +319,7 @@ function MedicineViewContent({ params }: { params: Promise<{ id: string }> }) {
                   <div className="space-y-4">
                     {medicine.description && (
                       <div>
-                        <label className="text-xs font-medium text-gray-500 uppercase">{t('pharmacy.description')}</label>
+                        <label className="text-xs font-medium text-gray-500 uppercase">{t('pharmacy.descriptionLabel')}</label>
                         <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">{medicine.description}</p>
                       </div>
                     )}

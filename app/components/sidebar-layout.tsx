@@ -7,11 +7,11 @@ import { signOut, useSession } from 'next-auth/react';
 import { useTranslations } from '../hooks/useTranslations';
 import { useSettings } from '../contexts/SettingsContext';
 import LanguageSwitcher from './LanguageSwitcher';
-import { 
-  Users, 
-  Calendar, 
+import {
+  Users,
+  Calendar,
   CalendarDays,
-  FileText, 
+  FileText,
   Receipt,
   Home,
   Stethoscope,
@@ -101,12 +101,13 @@ export default function SidebarLayout({ children, title, description }: SidebarL
     { id: 'staff', label: t('navigation.staff'), icon: UserCheck, href: '/staff', roles: ['admin'] },
     { id: 'patients', label: t('navigation.patients'), icon: Users, href: '/patients', roles: ['admin', 'doctor', 'staff'] },
     { id: 'appointments', label: t('navigation.appointments'), icon: Calendar, href: '/appointments', roles: ['admin', 'doctor', 'staff'] },
+    { id: 'encounters', label: 'Encounters', icon: FileText, href: '/encounters', roles: ['admin', 'doctor', 'staff'] },
     { id: 'calendar', label: t('navigation.calendar'), icon: CalendarDays, href: '/calendar', roles: ['admin', 'doctor', 'staff'] },
-    { 
-      id: 'laboratory', 
-      label: t('navigation.laboratory'), 
-      icon: FlaskConical, 
-      href: '/lab', 
+    {
+      id: 'laboratory',
+      label: t('navigation.laboratory'),
+      icon: FlaskConical,
+      href: '/lab',
       roles: ['admin', 'doctor', 'staff'],
       children: [
         { id: 'lab-tests', label: t('lab.tests'), icon: TestTube, href: '/lab', roles: ['admin', 'doctor', 'staff'] },
@@ -115,11 +116,11 @@ export default function SidebarLayout({ children, title, description }: SidebarL
         { id: 'lab-results', label: t('lab.completedResults'), icon: ClipboardCheck, href: '/lab?status=completed', roles: ['admin', 'doctor', 'staff'] }
       ]
     },
-    { 
-      id: 'inpatient', 
-      label: t('navigation.inpatient'), 
-      icon: Building2, 
-      href: '/inpatient/admissions', 
+    {
+      id: 'inpatient',
+      label: t('navigation.inpatient'),
+      icon: Building2,
+      href: '/inpatient/admissions',
       roles: ['admin', 'doctor', 'staff'],
       children: [
         { id: 'admissions', label: t('inpatient.admissions'), icon: HeartPulse, href: '/inpatient/admissions', roles: ['admin', 'doctor', 'staff'] },
@@ -128,22 +129,22 @@ export default function SidebarLayout({ children, title, description }: SidebarL
         { id: 'beds', label: t('inpatient.beds'), icon: Bed, href: '/inpatient/beds', roles: ['admin', 'doctor', 'staff'] }
       ]
     },
-    { 
-      id: 'radiology', 
-      label: t('navigation.radiology'), 
-      icon: Radio, 
-      href: '/radiology', 
+    {
+      id: 'radiology',
+      label: t('navigation.radiology'),
+      icon: Radio,
+      href: '/radiology',
       roles: ['admin', 'doctor', 'staff'],
       children: [
         { id: 'radiology-studies', label: t('radiology.studies'), icon: Image, href: '/radiology', roles: ['admin', 'doctor', 'staff'] },
         { id: 'radiology-new', label: t('radiology.newStudy'), icon: Plus, href: '/radiology/new', roles: ['admin', 'doctor', 'staff'] }
       ]
     },
-    { 
-      id: 'pharmacy', 
-      label: t('navigation.pharmacy'), 
-      icon: Pill, 
-      href: '/pharmacy', 
+    {
+      id: 'pharmacy',
+      label: t('navigation.pharmacy'),
+      icon: Pill,
+      href: '/pharmacy',
       roles: ['admin', 'doctor', 'staff'],
       children: [
         { id: 'pharmacy-medicines', label: t('pharmacy.medicines'), icon: Pill, href: '/pharmacy', roles: ['admin', 'doctor', 'staff'] },
@@ -151,11 +152,11 @@ export default function SidebarLayout({ children, title, description }: SidebarL
         { id: 'pharmacy-dispensing', label: t('pharmacy.dispensing'), icon: Package, href: '/pharmacy/dispensing', roles: ['admin', 'doctor', 'staff'] }
       ]
     },
-    { 
-      id: 'inventory', 
-      label: t('navigation.inventory'), 
-      icon: Package, 
-      href: '/inventory', 
+    {
+      id: 'inventory',
+      label: t('navigation.inventory'),
+      icon: Package,
+      href: '/inventory',
       roles: ['admin', 'staff'],
       children: [
         { id: 'inventory-items', label: t('inventory.items'), icon: Package, href: '/inventory', roles: ['admin', 'staff'] },
@@ -165,11 +166,11 @@ export default function SidebarLayout({ children, title, description }: SidebarL
       ]
     },
     { id: 'medical-reports', label: t('navigation.medicalReports'), icon: FileText, href: '/reports', roles: ['admin', 'doctor', 'staff'] },
-    { 
-      id: 'analytical-reports', 
-      label: t('navigation.analyticalReports'), 
-      icon: BarChart3, 
-      href: '/analytical-reports', 
+    {
+      id: 'analytical-reports',
+      label: t('navigation.analyticalReports'),
+      icon: BarChart3,
+      href: '/analytical-reports',
       roles: ['admin', 'doctor', 'staff'],
       children: [
         { id: 'financial-reports', label: t('navigation.financialReports'), icon: DollarSign, href: '/analytical-reports/financial', roles: ['admin', 'staff'] },
@@ -180,11 +181,11 @@ export default function SidebarLayout({ children, title, description }: SidebarL
         { id: 'appointment-analytics', label: t('navigation.appointmentAnalytics'), icon: Calendar, href: '/analytical-reports/appointment', roles: ['admin', 'doctor', 'staff'] }
       ]
     },
-    { 
-      id: 'billing', 
-      label: t('navigation.billing'), 
-      icon: Receipt, 
-      href: '/billing', 
+    {
+      id: 'billing',
+      label: t('navigation.billing'),
+      icon: Receipt,
+      href: '/billing',
       roles: ['admin', 'doctor', 'staff'],
       children: [
         { id: 'billing-home', label: t('billing.title'), icon: Receipt, href: '/billing', roles: ['admin', 'doctor', 'staff'] },
@@ -282,7 +283,7 @@ export default function SidebarLayout({ children, title, description }: SidebarL
     <div className="min-h-screen bg-gray-50 flex">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-gray-600 bg-opacity-75 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -296,8 +297,14 @@ export default function SidebarLayout({ children, title, description }: SidebarL
         {/* Sidebar Header */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Stethoscope className="h-5 w-5 text-white" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+              {settings?.logo ? (
+                <img src={settings.logo} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <div className="w-full h-full bg-blue-600 flex items-center justify-center">
+                  <Stethoscope className="h-5 w-5 text-white" />
+                </div>
+              )}
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">
@@ -371,20 +378,20 @@ export default function SidebarLayout({ children, title, description }: SidebarL
                     )}
                   </>
                 ) : (
-            <Link
-              href={item.href}
-              className={`
+                  <Link
+                    href={item.href}
+                    className={`
                 flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
                       ${isActive
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-                }
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                      }
               `}
-              onClick={() => setSidebarOpen(false)}
-            >
-              <item.icon className="h-5 w-5" />
-              <span>{item.label}</span>
-            </Link>
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    <span>{item.label}</span>
+                  </Link>
                 )}
               </div>
             );
@@ -573,7 +580,7 @@ export default function SidebarLayout({ children, title, description }: SidebarL
             <div className="mb-8 print:hidden">
               <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
               {description && (
-                                        <p className="text-gray-700">{description}</p>
+                <p className="text-gray-700">{description}</p>
               )}
             </div>
 

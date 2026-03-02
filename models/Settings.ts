@@ -15,6 +15,8 @@ export interface ISettings {
   appointmentReminders: boolean;
   reminderTime: number; // in minutes before appointment
   maxAppointmentsPerDay: number;
+  logo: string;
+  favicon: string;
   workingHours: {
     start: string; // HH:MM format
     end: string;   // HH:MM format
@@ -119,6 +121,14 @@ const settingsSchema = new mongoose.Schema<ISettings>(
     maxAppointmentsPerDay: {
       type: Number,
       default: 50,
+    },
+    logo: {
+      type: String,
+      default: '',
+    },
+    favicon: {
+      type: String,
+      default: '',
     },
     workingHours: {
       start: {

@@ -73,7 +73,7 @@ export default function NewPurchaseOrderPage() {
 
   const updateItem = (index: number, field: string, value: number) => {
     const newItems = [...formData.items];
-    (newItems[index] as Record<string, unknown>)[field] = value;
+    (newItems[index] as unknown as Record<string, unknown>)[field] = value;
     if (field === 'quantity') newItems[index].totalCost = value * newItems[index].unitCost;
     if (field === 'unitCost') newItems[index].totalCost = value * newItems[index].quantity;
     setFormData(prev => ({ ...prev, items: newItems }));
@@ -138,7 +138,7 @@ export default function NewPurchaseOrderPage() {
             <div className="bg-white rounded-lg p-6">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><ShoppingCart className="h-5 w-5 text-blue-600" />{t('inventory.orderDetails')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">{t('inventory.supplier')} *</label>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">{t('inventory.orderSupplier')} *</label>
                   <select required value={formData.supplierId} onChange={handleSupplierChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="">{t('inventory.selectSupplier')}</option>

@@ -239,7 +239,7 @@ export default function NewWardPage() {
             {/* Description */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('inpatient.description')}
+                {t('inpatient.descriptionLabel')}
               </label>
               <textarea
                 rows={3}

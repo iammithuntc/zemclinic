@@ -4,11 +4,12 @@ import { authOptions } from '../auth/[...nextauth]/route';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import bcrypt from 'bcryptjs';
+import { revalidatePath, revalidateTag } from 'next/cache';
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     // Only admin can access doctors list
     if (!session?.user?.email || session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -42,16 +43,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     // Only admin can create doctors
     if (!session?.user?.email || session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { 
-      name, 
-      email, 
-      password, 
+    const {
+      name,
+      email,
+      password,
       role,
       phone,
       specialization,
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
     const userResponse = newUser.toObject();
     delete userResponse.password;
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Doctor created successfully',
       user: userResponse
     });
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     // Only admin can update doctors
     if (!session?.user?.email || session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -139,10 +140,10 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Doctor ID is required' }, { status: 400 });
     }
 
-    const { 
-      name, 
-      email, 
-      password, 
+    const {
+      name,
+      email,
+      password,
       role,
       phone,
       specialization,
@@ -188,7 +189,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Doctor not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ 
+    // Trigger revalidation for all routes that display doctor names
+    revalidatePath('/patients');
+    revalidatePath('/appointments');
+    revalidatePath('/doctors');
+    revalidateTag('doctors');
+
+    return NextResponse.json({
       message: 'Doctor updated successfully',
       user: updatedUser
     });
@@ -202,7 +209,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     // Only admin can delete doctors
     if (!session?.user?.email || session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -228,7 +235,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Doctor not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Doctor deleted successfully'
     });
 

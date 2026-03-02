@@ -1,0 +1,19 @@
+
+D:\dev-projects\dev-mithuntc\official-projects\ZemClinic\app\components\treatment-plans\TreatmentPlansList.tsx
+   22:7   warning  'X' is assigned a value but never used                                                                         @typescript-eslint/no-unused-vars
+   78:12  warning  'showPlanMenu' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+   78:26  warning  'setShowPlanMenu' is assigned a value but never used                                                           @typescript-eslint/no-unused-vars
+   93:8   warning  React Hook useEffect has a missing dependency: 'fetchPlans'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  103:87  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  108:61  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  138:49  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  147:46  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  156:14  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  349:96  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  499:66  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  747:63  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  750:72  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  764:72  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+
+✖ 14 problems (10 errors, 4 warnings)
+

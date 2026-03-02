@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/app/protected-route';
 import SidebarLayout from '@/app/components/sidebar-layout';
 import { useTranslations } from '@/app/hooks/useTranslations';
-import { 
-  ArrowLeft, 
-  Edit, 
-  Building2, 
+import {
+  ArrowLeft,
+  Edit,
+  Building2,
   Bed as BedIcon,
   Plus,
   User,
@@ -173,9 +173,8 @@ export default function WardDetailPage({ params }: { params: Promise<{ id: strin
                 <h2 className="text-2xl font-bold text-gray-900">{ward.name}</h2>
                 <p className="text-gray-500">{ward.wardNumber}</p>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    ward.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${ward.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
                     {ward.isActive ? t('inpatient.active') : t('inpatient.inactive')}
                   </span>
                 </div>
@@ -217,7 +216,7 @@ export default function WardDetailPage({ params }: { params: Promise<{ id: strin
 
             {ward.description && (
               <div className="mt-6 pt-6 border-t border-gray-200">
-                <p className="text-sm text-gray-500 mb-1">{t('inpatient.description')}</p>
+                <p className="text-sm text-gray-500 mb-1">{t('inpatient.descriptionLabel')}</p>
                 <p className="text-gray-700">{ward.description}</p>
               </div>
             )}

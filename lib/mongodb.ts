@@ -1,18 +1,21 @@
 import mongoose from 'mongoose';
 
-function getMongoUri() {
-  const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ai-doc';
-  if (!MONGODB_URI) {
-    throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
-  }
-  return MONGODB_URI;
-}
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ai-doc';
 
 /**
  * Global is used here to maintain a cached connection across hot reloads
  * in development. This prevents connections growing exponentially
  * during API Route usage.
  */
+interface MongooseCache {
+  conn: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
+}
+
+declare global {
+  var mongoose: MongooseCache;
+}
+
 let cached = global.mongoose;
 
 if (!cached) {
@@ -29,14 +32,16 @@ async function dbConnect() {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(getMongoUri(), opts).then((mongoose) => {
-      return mongoose;
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance) => {
+      return mongooseInstance;
     });
   }
 
   try {
     cached.conn = await cached.promise;
+    console.log('MongoDB connected successfully');
   } catch (e) {
+    console.error('MongoDB connection failed:', e);
     cached.promise = null;
     throw e;
   }

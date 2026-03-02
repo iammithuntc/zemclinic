@@ -7,12 +7,12 @@ import Appointment from '@/models/Appointment';
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    
+
     await dbConnect();
-    
+
     // Build query based on user role
     let query: any = {};
-    
+
     if (session?.user) {
       // If user is a doctor, filter by doctor email or name
       if (session.user.role === 'doctor') {
@@ -28,7 +28,7 @@ export async function GET() {
       }
       // Admin and staff see all appointments (no filter)
     }
-    
+
     const appointments = await Appointment.find(query).sort({ appointmentDate: -1 });
     return NextResponse.json(appointments);
   } catch (error) {
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
     await dbConnect();
     const body = await request.json();
-    
+
     // If logged in as a doctor, automatically set doctor email and name
     if (session?.user?.role === 'doctor') {
       body.doctorEmail = session.user.email;
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     } else if (body.doctorName && !body.doctorEmail) {
       // If admin/staff selected a doctor, find the doctor's email
       const User = (await import('@/models/User')).default;
-      const doctor = await User.findOne({ 
+      const doctor = await User.findOne({
         name: body.doctorName,
         role: 'doctor'
       });
@@ -63,10 +63,25 @@ export async function POST(request: NextRequest) {
         body.doctorEmail = doctor.email;
       }
     }
-    
+
     const appointment = new Appointment(body);
     await appointment.save();
-    
+
+    // If this appointment is linked to a treatment plan stage, update the stage status
+    if (body.planStageId) {
+      try {
+        const PlanStage = (await import('@/models/PlanStage')).default;
+        await PlanStage.findByIdAndUpdate(body.planStageId, {
+          status: 'SCHEDULED',
+          appointmentId: appointment._id,
+          tentativeDate: appointment.appointmentDate
+        });
+      } catch (stageError) {
+        console.error('Error updating PlanStage status:', stageError);
+        // We don't fail the whole request because the appointment was successfully created
+      }
+    }
+
     return NextResponse.json(appointment, { status: 201 });
   } catch (error) {
     console.error('Error creating appointment:', error);

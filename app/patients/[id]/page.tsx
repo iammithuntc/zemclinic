@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  ArrowLeft, 
-  Edit, 
-  Users, 
-  Phone, 
-  Mail, 
+import {
+  ArrowLeft,
+  Edit,
+  Users,
+  Phone,
+  Mail,
   Calendar,
   MapPin,
   Heart,
@@ -27,6 +27,8 @@ import {
 import ProtectedRoute from '../../protected-route';
 import SidebarLayout from '../../components/sidebar-layout';
 import FormattedAIResult from '../../components/FormattedAIResult';
+import EncountersList from '../../encounters/EncountersList';
+import TreatmentPlansList from '../../components/treatment-plans/TreatmentPlansList';
 
 export default function PatientViewPage() {
   const params = useParams();
@@ -38,7 +40,7 @@ export default function PatientViewPage() {
   const [loadingAiResults, setLoadingAiResults] = useState(true);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loadingAppointments, setLoadingAppointments] = useState(true);
-  const [activeTab, setActiveTab] = useState<'details' | 'appointments' | 'treatment-plan' | 'prescription' | 'drug-interaction' | 'image-analysis' | 'appointment-optimizer' | 'risk-assessment' | 'voice-transcription'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'encounters' | 'appointments' | 'treatment-plan' | 'ai-treatment-suggestions' | 'prescription' | 'drug-interaction' | 'image-analysis' | 'appointment-optimizer' | 'risk-assessment' | 'voice-transcription'>('details');
   const [selectedResult, setSelectedResult] = useState<any>(null);
   const [selectedSymptomAnalysis, setSelectedSymptomAnalysis] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
@@ -75,15 +77,15 @@ export default function PatientViewPage() {
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!params.id || !patient) return;
-      
+
       try {
         setLoadingAppointments(true);
         const response = await fetch('/api/appointments');
         if (response.ok) {
           const data = await response.json();
           // Filter appointments for this patient by patientId or patientName
-          const patientAppointments = data.filter((apt: any) => 
-            apt.patientId === params.id || 
+          const patientAppointments = data.filter((apt: any) =>
+            apt.patientId === params.id ||
             apt.patientId === patient._id ||
             apt.patientName?.toLowerCase() === patient.name?.toLowerCase()
           );
@@ -104,12 +106,12 @@ export default function PatientViewPage() {
   // Fetch AI results for this patient
   const fetchAIResults = async () => {
     if (!params.id) return;
-    
+
     try {
       setLoadingAiResults(true);
       const patientId = String(params.id); // Ensure it's a string
       console.log('Fetching AI results for patient:', patientId, 'Type:', typeof patientId);
-      
+
       // First, let's check what's in the database
       const debugResponse = await fetch(`/api/ai-results/debug?patientId=${patientId}`);
       if (debugResponse.ok) {
@@ -119,7 +121,7 @@ export default function PatientViewPage() {
         console.log('Counts by type:', debugData.countsByType);
         console.log('All results:', debugData.allResults);
       }
-      
+
       // Then fetch normally
       const response = await fetch(`/api/ai-results?patientId=${patientId}`);
       if (response.ok) {
@@ -174,8 +176,8 @@ export default function PatientViewPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <SidebarLayout 
-          title="Patient Details" 
+        <SidebarLayout
+          title="Patient Details"
           description="View patient information"
         >
           <div className="flex items-center justify-center h-64">
@@ -189,8 +191,8 @@ export default function PatientViewPage() {
   if (error || !patient) {
     return (
       <ProtectedRoute>
-        <SidebarLayout 
-          title="Patient Not Found" 
+        <SidebarLayout
+          title="Patient Not Found"
           description="The requested patient could not be found"
         >
           <div className="text-center py-12">
@@ -239,20 +241,22 @@ export default function PatientViewPage() {
   const findRelatedSymptomAnalysis = (treatmentPlan: any) => {
     const symptomAnalyses = getAIResultsByType('symptom-analysis');
     if (symptomAnalyses.length === 0) return null;
-    
+
     // Find the symptom analysis created before this treatment plan (closest one)
     const treatmentDate = new Date(treatmentPlan.createdAt);
     const relatedSymptoms = symptomAnalyses
       .filter((symptom: any) => new Date(symptom.createdAt) <= treatmentDate)
       .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    
+
     return relatedSymptoms.length > 0 ? relatedSymptoms[0] : null;
   };
 
   const tabs = [
     { id: 'details', label: 'Patient Details', icon: User },
+    { id: 'encounters', label: 'Encounters', icon: FileText },
     { id: 'appointments', label: 'Appointments', icon: Calendar, count: appointments.length },
-    { id: 'treatment-plan', label: 'Treatment Plans', icon: Pill, count: getAIResultsByType('treatment-plan').length },
+    { id: 'treatment-plan', label: 'Treatment Plans', icon: Pill },
+    { id: 'ai-treatment-suggestions', label: 'AI Suggestions', icon: Brain, count: getAIResultsByType('treatment-plan').length },
     { id: 'prescription', label: 'Prescriptions', icon: FileText, count: getAIResultsByType('prescription').length },
     { id: 'drug-interaction', label: 'Drug Interactions', icon: Pill, count: getAIResultsByType('drug-interaction').length },
     { id: 'image-analysis', label: 'Image Analysis', icon: Camera, count: getAIResultsByType('image-analysis').length },
@@ -263,14 +267,14 @@ export default function PatientViewPage() {
 
   return (
     <ProtectedRoute>
-      <SidebarLayout 
-        title="Patient Details" 
+      <SidebarLayout
+        title="Patient Details"
         description="View and manage patient information"
       >
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-6">
-            <Link 
+            <Link
               href="/patients"
               className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 mb-4"
             >
@@ -301,22 +305,20 @@ export default function PatientViewPage() {
                       <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`w-full py-3 px-4 mb-1 rounded-lg font-medium text-sm flex items-center justify-between transition-colors ${
-                          activeTab === tab.id
-                            ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600'
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        }`}
+                        className={`w-full py-3 px-4 mb-1 rounded-lg font-medium text-sm flex items-center justify-between transition-colors ${activeTab === tab.id
+                          ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          }`}
                       >
                         <div className="flex items-center space-x-3">
                           <Icon className="h-5 w-5" />
                           <span>{tab.label}</span>
                         </div>
                         {tab.count !== undefined && tab.count > 0 && (
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                            activeTab === tab.id
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-gray-200 text-gray-600'
-                          }`}>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${activeTab === tab.id
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-200 text-gray-600'
+                            }`}>
                             {tab.count}
                           </span>
                         )}
@@ -330,479 +332,269 @@ export default function PatientViewPage() {
             {/* Tab Content - Right Side */}
             <div className="flex-1 min-w-0">
               <div className="bg-white rounded-lg shadow">
-            {/* Patient Details Tab */}
-            {activeTab === 'details' && (
-            <div className="p-6">
-                <div className="space-y-6">
-                  {/* Personal Information */}
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <User className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Full Name</p>
-                      <p className="text-sm text-gray-900">{patient.name}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <User className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Patient ID</p>
-                      <p className="text-sm text-gray-900 font-mono">{patient.patientId || patient._id}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <Mail className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Email</p>
-                      <p className="text-sm text-gray-900">{patient.email}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <Phone className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Phone</p>
-                      <p className="text-sm text-gray-900">{patient.phone}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Date of Birth</p>
-                      <p className="text-sm text-gray-900">
-                        {patient.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString() : 'Not specified'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <MapPin className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Address</p>
-                      <p className="text-sm text-gray-900">{patient.address || 'Not specified'}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <Heart className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Blood Type</p>
-                      <p className="text-sm text-gray-900">{patient.bloodType || 'Not specified'}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <Users className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Assigned Doctor</p>
-                      <p className="text-sm text-gray-900">{patient.assignedDoctor || 'Not assigned'}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Registration Date</p>
-                      <p className="text-sm text-gray-900">
-                        {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'Not specified'}
-                      </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+                {/* Patient Details Tab */}
+                {activeTab === 'details' && (
+                  <div className="p-6">
+                    <div className="space-y-6">
+                      {/* Personal Information */}
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center space-x-3">
+                              <User className="h-5 w-5 text-gray-400" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-500">Full Name</p>
+                                <p className="text-sm text-gray-900">{patient.name}</p>
+                              </div>
+                            </div>
 
-          {/* Emergency Contact */}
-          {patient.emergencyContact && (
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4">Emergency Contact</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Name</p>
-                    <p className="text-sm text-gray-900">{patient.emergencyContact.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Relationship</p>
-                    <p className="text-sm text-gray-900">{patient.emergencyContact.relationship}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Phone</p>
-                    <p className="text-sm text-gray-900">{patient.emergencyContact.phone}</p>
-                </div>
-              </div>
-            </div>
-          )}
+                            <div className="flex items-center space-x-3">
+                              <User className="h-5 w-5 text-gray-400" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-500">Patient ID</p>
+                                <p className="text-sm text-gray-900 font-mono">{patient.patientId || patient._id}</p>
+                              </div>
+                            </div>
 
-          {/* Medical History */}
-          {patient.medicalHistory && (
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4">Medical History</h2>
-                      <p className="text-sm text-gray-900">{patient.medicalHistory}</p>
+                            <div className="flex items-center space-x-3">
+                              <Mail className="h-5 w-5 text-gray-400" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-500">Email</p>
+                                <p className="text-sm text-gray-900">{patient.email}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-3">
+                              <Phone className="h-5 w-5 text-gray-400" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-500">Phone</p>
+                                <p className="text-sm text-gray-900">{patient.phone}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-3">
+                              <Calendar className="h-5 w-5 text-gray-400" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-500">Date of Birth</p>
+                                <p className="text-sm text-gray-900">
+                                  {patient.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString() : 'Not specified'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="flex items-center space-x-3">
+                              <MapPin className="h-5 w-5 text-gray-400" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-500">Address</p>
+                                <p className="text-sm text-gray-900">{patient.address || 'Not specified'}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-3">
+                              <Heart className="h-5 w-5 text-gray-400" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-500">Blood Type</p>
+                                <p className="text-sm text-gray-900">{patient.bloodType || 'Not specified'}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-3">
+                              <Users className="h-5 w-5 text-gray-400" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-500">Assigned Doctor</p>
+                                <p className="text-sm text-gray-900">{patient.assignedDoctorId?.name || patient.assignedDoctor || 'Not assigned'}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-3">
+                              <Calendar className="h-5 w-5 text-gray-400" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-500">Registration Date</p>
+                                <p className="text-sm text-gray-900">
+                                  {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'Not specified'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Emergency Contact */}
+                      {patient.emergencyContact && (
+                        <div>
+                          <h2 className="text-lg font-semibold text-gray-900 mb-4">Emergency Contact</h2>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">Name</p>
+                              <p className="text-sm text-gray-900">{patient.emergencyContact.name}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">Relationship</p>
+                              <p className="text-sm text-gray-900">{patient.emergencyContact.relationship}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">Phone</p>
+                              <p className="text-sm text-gray-900">{patient.emergencyContact.phone}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Medical History */}
+                      {patient.medicalHistory && (
+                        <div>
+                          <h2 className="text-lg font-semibold text-gray-900 mb-4">Medical History</h2>
+                          <p className="text-sm text-gray-900">{patient.medicalHistory}</p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Appointments Tab */}
-            {activeTab === 'appointments' && (
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Appointments</h2>
-                {loadingAppointments ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : appointments.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-500">No appointments found for this patient</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {appointments.map((appointment) => (
-                          <tr key={appointment._id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {appointment.appointmentDate ? new Date(appointment.appointmentDate).toLocaleDateString() : 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {appointment.appointmentTime || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {appointment.doctorName || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {appointment.appointmentType || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(appointment.status)}`}>
-                                {appointment.status || 'N/A'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <Link
-                                href={`/appointments/${appointment._id}`}
-                                className="text-blue-600 hover:text-blue-900 flex items-center space-x-1"
-                              >
-                                <Eye className="h-4 w-4" />
-                                <span>View</span>
-                              </Link>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Treatment Plans Tab - Shows both symptoms and treatments */}
-            {activeTab === 'treatment-plan' && (
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                  <Pill className="h-5 w-5" />
-                  <span>Treatment Plans</span>
-                </h2>
-                {loadingAiResults ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                {/* Encounters Tab */}
+                {activeTab === 'encounters' && (
+                  <div className="p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-lg font-semibold text-gray-900">Clinical Encounters</h2>
+                      <Link
+                        href="/appointments"
+                        className="text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        Start New Encounter via Appointment
+                      </Link>
+                    </div>
+                    {patient && <EncountersList patientId={patient.patientId || patient._id} />}
                   </div>
-                ) : getAIResultsByType('treatment-plan').length === 0 ? (
-                  <div className="text-center py-8">
-                    <Brain className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-500">No treatment plans available for this patient</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Model</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {getAIResultsByType('treatment-plan').map((result) => {
-                          const relatedSymptom = findRelatedSymptomAnalysis(result);
-                          return (
-                            <tr key={result._id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center space-x-2">
-                                  <div className="p-2 rounded-lg bg-blue-100 text-blue-800">
-                                    <Pill className="h-5 w-5" />
-                                  </div>
-                                  <div>
-                                    <div className="text-sm font-medium text-gray-900">{result.title}</div>
-                                    {result.metadata && (
-                                      <div className="text-xs text-gray-500 mt-1">
-                                        {result.metadata.diagnosis && (
-                                          <span className="mr-2">Diagnosis: {result.metadata.diagnosis}</span>
-                                        )}
-                                        {result.metadata.symptoms && result.metadata.symptoms.length > 0 && (
-                                          <span>Symptoms: {result.metadata.symptoms.length}</span>
-                                        )}
-                                      </div>
-                                    )}
-                                    {relatedSymptom && (
-                                      <div className="text-xs text-indigo-600 mt-1 flex items-center space-x-1">
-                                        <Brain className="h-3 w-3" />
-                                        <span>Linked to symptom analysis</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {result.aiModel?.name || 'N/A'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                <div className="flex items-center space-x-1">
-                                  <Clock className="h-3 w-3 text-gray-400" />
-                                  <span>{new Date(result.createdAt).toLocaleDateString()}</span>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div className="flex items-center space-x-2">
-                                  <button
-                                    onClick={() => {
-                                      setSelectedTreatmentPlan(result);
-                                      setSelectedTreatmentPlanSymptom(relatedSymptom || null);
-                                      // Default to symptoms tab if available, otherwise treatment
-                                      setTreatmentPlanModalTab(relatedSymptom ? 'symptoms' : 'treatment');
-                                      setShowTreatmentPlanModal(true);
-                                    }}
-                                    className="text-blue-600 hover:text-blue-900 flex items-center space-x-1 px-2 py-1 border border-blue-300 rounded hover:bg-blue-50"
-                                    title="View Treatment Plan"
+                )}
+
+                {/* Appointments Tab */}
+                {activeTab === 'appointments' && (
+                  <div className="p-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Appointments</h2>
+                    {loadingAppointments ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      </div>
+                    ) : appointments.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Calendar className="mx-auto h-12 w-12 text-gray-400" />
+                        <p className="mt-2 text-sm text-gray-500">No appointments found for this patient</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {appointments.map((appointment) => (
+                              <tr key={appointment._id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {appointment.appointmentDate ? new Date(appointment.appointmentDate).toLocaleDateString() : 'N/A'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {appointment.appointmentTime || 'N/A'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {appointment.doctorName || 'N/A'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {appointment.appointmentType || 'N/A'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(appointment.status)}`}>
+                                    {appointment.status || 'N/A'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <Link
+                                    href={`/appointments/${appointment._id}`}
+                                    className="text-blue-600 hover:text-blue-900 flex items-center space-x-1"
                                   >
                                     <Eye className="h-4 w-4" />
-                                    <span className="text-xs">View</span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteResult(result._id, result.title)}
-                                    className="text-red-600 hover:text-red-900 flex items-center space-x-1 px-2 py-1 border border-red-300 rounded hover:bg-red-50"
-                                    title="Delete Treatment Plan"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="text-xs">Delete</span>
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Prescription Tab */}
-            {activeTab === 'prescription' && (
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                  <FileText className="h-5 w-5" />
-                  <span>Prescriptions</span>
-                </h2>
-                {loadingAiResults ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : getAIResultsByType('prescription').length === 0 ? (
-                  <div className="text-center py-8">
-                    <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-500">No prescriptions available for this patient</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Model</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {getAIResultsByType('prescription').map((result) => (
-                          <tr key={result._id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center space-x-2">
-                                <div className="p-2 rounded-lg bg-teal-100 text-teal-800">
-                                  <FileText className="h-5 w-5" />
-                                </div>
-                                <div>
-                                  <div className="text-sm font-medium text-gray-900">{result.title}</div>
-                                  {result.metadata && (
-                                    <div className="text-xs text-gray-500 mt-1">
-                                      {result.metadata.diagnosis && (
-                                        <span className="mr-2">Diagnosis: {result.metadata.diagnosis}</span>
-                                      )}
-                                      {result.metadata.medications && result.metadata.medications.length > 0 && (
-                                        <span>Medications: {result.metadata.medications.length}</span>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {result.aiModel?.name || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              <div className="flex items-center space-x-1">
-                                <Clock className="h-3 w-3 text-gray-400" />
-                                <span>{new Date(result.createdAt).toLocaleDateString()}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex items-center space-x-2">
-                                <button
-                                  onClick={() => {
-                                    setSelectedResult(result);
-                                    setShowModal(true);
-                                  }}
-                                  className="text-blue-600 hover:text-blue-900 flex items-center space-x-1"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                  <span>View</span>
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteResult(result._id, result.title)}
-                                  className="text-red-600 hover:text-red-900 flex items-center space-x-1"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span>Delete</span>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Other AI Analysis Tabs */}
-            {['drug-interaction', 'image-analysis', 'appointment-optimizer', 'risk-assessment', 'voice-transcription'].includes(activeTab) && (
-              <div className="p-6">
-                {(() => {
-                  const typeResults = getAIResultsByType(activeTab);
-                  const getTypeLabel = () => {
-                    switch (activeTab) {
-                      case 'prescription': return 'Prescriptions';
-                      case 'drug-interaction': return 'Drug Interactions';
-                      case 'image-analysis': return 'Image Analysis';
-                      case 'appointment-optimizer': return 'Appointment Optimizer';
-                      case 'risk-assessment': return 'Risk Assessment';
-                      case 'voice-transcription': return 'Voice Transcriptions';
-                      default: return 'AI Analysis';
-                    }
-                  };
-
-                  const getTypeIcon = () => {
-                    switch (activeTab) {
-                      case 'prescription': return <FileText className="h-5 w-5" />;
-                      case 'drug-interaction': return <Pill className="h-5 w-5" />;
-                      case 'image-analysis': return <Camera className="h-5 w-5" />;
-                      case 'appointment-optimizer': return <CalendarIcon className="h-5 w-5" />;
-                      case 'risk-assessment': return <Shield className="h-5 w-5" />;
-                      case 'voice-transcription': return <Mic className="h-5 w-5" />;
-                      default: return <Brain className="h-5 w-5" />;
-                    }
-                  };
-
-                  const getTypeColor = () => {
-                    switch (activeTab) {
-                      case 'prescription': return 'bg-teal-100 text-teal-800';
-                      case 'drug-interaction': return 'bg-red-100 text-red-800';
-                      case 'image-analysis': return 'bg-purple-100 text-purple-800';
-                      case 'appointment-optimizer': return 'bg-green-100 text-green-800';
-                      case 'risk-assessment': return 'bg-orange-100 text-orange-800';
-                      case 'voice-transcription': return 'bg-violet-100 text-violet-800';
-                      default: return 'bg-gray-100 text-gray-800';
-                    }
-                  };
-
-                  return (
-                    <>
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                        {getTypeIcon()}
-                        <span>{getTypeLabel()}</span>
-                      </h2>
-                      {loadingAiResults ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                        </div>
-                      ) : typeResults.length === 0 ? (
-                        <div className="text-center py-8">
-                          <Brain className="mx-auto h-12 w-12 text-gray-400" />
-                          <p className="mt-2 text-sm text-gray-500">No {getTypeLabel().toLowerCase()} available for this patient</p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Model</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    <span>View</span>
+                                  </Link>
+                                </td>
                               </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {typeResults.map((result) => (
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Treatment Plans Tab - Clinical Structured Plans */}
+                {activeTab === 'treatment-plan' && (
+                  <div className="p-6">
+                    {patient && <TreatmentPlansList patientId={patient.patientId || patient._id} />}
+                  </div>
+                )}
+
+                {/* AI Treatment Suggestions Tab - (Previously treatment-plan) */}
+                {activeTab === 'ai-treatment-suggestions' && (
+                  <div className="p-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                      <Brain className="h-5 w-5" />
+                      <span>AI Treatment Suggestions</span>
+                    </h2>
+                    {loadingAiResults ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      </div>
+                    ) : getAIResultsByType('treatment-plan').length === 0 ? (
+                      <div className="text-center py-8">
+                        <Brain className="mx-auto h-12 w-12 text-gray-400" />
+                        <p className="mt-2 text-sm text-gray-500">No treatment plans available for this patient</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Model</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {getAIResultsByType('treatment-plan').map((result) => {
+                              const relatedSymptom = findRelatedSymptomAnalysis(result);
+                              return (
                                 <tr key={result._id} className="hover:bg-gray-50">
                                   <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex items-center space-x-2">
-                                      <div className={`p-2 rounded-lg ${getTypeColor()}`}>
-                                        {getTypeIcon()}
+                                      <div className="p-2 rounded-lg bg-blue-100 text-blue-800">
+                                        <Pill className="h-5 w-5" />
                                       </div>
                                       <div>
-                                        {activeTab === 'image-analysis' ? (
-                                          <div className="text-sm font-medium text-gray-900">
-                                            {result.metadata?.imageType || 'Medical Image Analysis'}
-                                          </div>
-                                        ) : (
-                                          <>
-                                            <div className="text-sm font-medium text-gray-900">{result.title}</div>
-                                            {result.metadata && (
-                                              <div className="text-xs text-gray-500 mt-1">
-                                                {result.metadata.diagnosis && (
-                                                  <span className="mr-2">Diagnosis: {result.metadata.diagnosis}</span>
-                                                )}
-                                                {result.metadata.symptoms && result.metadata.symptoms.length > 0 && (
-                                                  <span>Symptoms: {result.metadata.symptoms.length}</span>
-                                                )}
-                                              </div>
+                                        <div className="text-sm font-medium text-gray-900">{result.title}</div>
+                                        {result.metadata && (
+                                          <div className="text-xs text-gray-500 mt-1">
+                                            {result.metadata.diagnosis && (
+                                              <span className="mr-2">Diagnosis: {result.metadata.diagnosis}</span>
                                             )}
-                                          </>
+                                            {result.metadata.symptoms && result.metadata.symptoms.length > 0 && (
+                                              <span>Symptoms: {result.metadata.symptoms.length}</span>
+                                            )}
+                                          </div>
+                                        )}
+                                        {relatedSymptom && (
+                                          <div className="text-xs text-indigo-600 mt-1 flex items-center space-x-1">
+                                            <Brain className="h-3 w-3" />
+                                            <span>Linked to symptom analysis</span>
+                                          </div>
                                         )}
                                       </div>
                                     </div>
@@ -820,35 +612,268 @@ export default function PatientViewPage() {
                                     <div className="flex items-center space-x-2">
                                       <button
                                         onClick={() => {
-                                          setSelectedResult(result);
-                                          setShowModal(true);
+                                          setSelectedTreatmentPlan(result);
+                                          setSelectedTreatmentPlanSymptom(relatedSymptom || null);
+                                          // Default to symptoms tab if available, otherwise treatment
+                                          setTreatmentPlanModalTab(relatedSymptom ? 'symptoms' : 'treatment');
+                                          setShowTreatmentPlanModal(true);
                                         }}
-                                        className="text-blue-600 hover:text-blue-900 flex items-center space-x-1"
+                                        className="text-blue-600 hover:text-blue-900 flex items-center space-x-1 px-2 py-1 border border-blue-300 rounded hover:bg-blue-50"
+                                        title="View Treatment Plan"
                                       >
                                         <Eye className="h-4 w-4" />
-                                        <span>View</span>
+                                        <span className="text-xs">View</span>
                                       </button>
                                       <button
                                         onClick={() => handleDeleteResult(result._id, result.title)}
-                                        className="text-red-600 hover:text-red-900 flex items-center space-x-1"
-                                        title="Delete"
+                                        className="text-red-600 hover:text-red-900 flex items-center space-x-1 px-2 py-1 border border-red-300 rounded hover:bg-red-50"
+                                        title="Delete Treatment Plan"
                                       >
                                         <Trash2 className="h-4 w-4" />
-                                        <span>Delete</span>
+                                        <span className="text-xs">Delete</span>
                                       </button>
                                     </div>
                                   </td>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            )}
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Prescription Tab */}
+                {activeTab === 'prescription' && (
+                  <div className="p-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                      <FileText className="h-5 w-5" />
+                      <span>Prescriptions</span>
+                    </h2>
+                    {loadingAiResults ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      </div>
+                    ) : getAIResultsByType('prescription').length === 0 ? (
+                      <div className="text-center py-8">
+                        <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                        <p className="mt-2 text-sm text-gray-500">No prescriptions available for this patient</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Model</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {getAIResultsByType('prescription').map((result) => (
+                              <tr key={result._id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="p-2 rounded-lg bg-teal-100 text-teal-800">
+                                      <FileText className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <div className="text-sm font-medium text-gray-900">{result.title}</div>
+                                      {result.metadata && (
+                                        <div className="text-xs text-gray-500 mt-1">
+                                          {result.metadata.diagnosis && (
+                                            <span className="mr-2">Diagnosis: {result.metadata.diagnosis}</span>
+                                          )}
+                                          {result.metadata.medications && result.metadata.medications.length > 0 && (
+                                            <span>Medications: {result.metadata.medications.length}</span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {result.aiModel?.name || 'N/A'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  <div className="flex items-center space-x-1">
+                                    <Clock className="h-3 w-3 text-gray-400" />
+                                    <span>{new Date(result.createdAt).toLocaleDateString()}</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <div className="flex items-center space-x-2">
+                                    <button
+                                      onClick={() => {
+                                        setSelectedResult(result);
+                                        setShowModal(true);
+                                      }}
+                                      className="text-blue-600 hover:text-blue-900 flex items-center space-x-1"
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                      <span>View</span>
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteResult(result._id, result.title)}
+                                      className="text-red-600 hover:text-red-900 flex items-center space-x-1"
+                                      title="Delete"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      <span>Delete</span>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Other AI Analysis Tabs */}
+                {['drug-interaction', 'image-analysis', 'appointment-optimizer', 'risk-assessment', 'voice-transcription'].includes(activeTab) && (
+                  <div className="p-6">
+                    {(() => {
+                      const typeResults = getAIResultsByType(activeTab);
+                      const getTypeLabel = () => {
+                        switch (activeTab) {
+                          case 'prescription': return 'Prescriptions';
+                          case 'drug-interaction': return 'Drug Interactions';
+                          case 'image-analysis': return 'Image Analysis';
+                          case 'appointment-optimizer': return 'Appointment Optimizer';
+                          case 'risk-assessment': return 'Risk Assessment';
+                          case 'voice-transcription': return 'Voice Transcriptions';
+                          default: return 'AI Analysis';
+                        }
+                      };
+
+                      const getTypeIcon = () => {
+                        switch (activeTab) {
+                          case 'prescription': return <FileText className="h-5 w-5" />;
+                          case 'drug-interaction': return <Pill className="h-5 w-5" />;
+                          case 'image-analysis': return <Camera className="h-5 w-5" />;
+                          case 'appointment-optimizer': return <CalendarIcon className="h-5 w-5" />;
+                          case 'risk-assessment': return <Shield className="h-5 w-5" />;
+                          case 'voice-transcription': return <Mic className="h-5 w-5" />;
+                          default: return <Brain className="h-5 w-5" />;
+                        }
+                      };
+
+                      const getTypeColor = () => {
+                        switch (activeTab) {
+                          case 'prescription': return 'bg-teal-100 text-teal-800';
+                          case 'drug-interaction': return 'bg-red-100 text-red-800';
+                          case 'image-analysis': return 'bg-purple-100 text-purple-800';
+                          case 'appointment-optimizer': return 'bg-green-100 text-green-800';
+                          case 'risk-assessment': return 'bg-orange-100 text-orange-800';
+                          case 'voice-transcription': return 'bg-violet-100 text-violet-800';
+                          default: return 'bg-gray-100 text-gray-800';
+                        }
+                      };
+
+                      return (
+                        <>
+                          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                            {getTypeIcon()}
+                            <span>{getTypeLabel()}</span>
+                          </h2>
+                          {loadingAiResults ? (
+                            <div className="flex items-center justify-center py-8">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                            </div>
+                          ) : typeResults.length === 0 ? (
+                            <div className="text-center py-8">
+                              <Brain className="mx-auto h-12 w-12 text-gray-400" />
+                              <p className="mt-2 text-sm text-gray-500">No {getTypeLabel().toLowerCase()} available for this patient</p>
+                            </div>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                  <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Model</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {typeResults.map((result) => (
+                                    <tr key={result._id} className="hover:bg-gray-50">
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="flex items-center space-x-2">
+                                          <div className={`p-2 rounded-lg ${getTypeColor()}`}>
+                                            {getTypeIcon()}
+                                          </div>
+                                          <div>
+                                            {activeTab === 'image-analysis' ? (
+                                              <div className="text-sm font-medium text-gray-900">
+                                                {result.metadata?.imageType || 'Medical Image Analysis'}
+                                              </div>
+                                            ) : (
+                                              <>
+                                                <div className="text-sm font-medium text-gray-900">{result.title}</div>
+                                                {result.metadata && (
+                                                  <div className="text-xs text-gray-500 mt-1">
+                                                    {result.metadata.diagnosis && (
+                                                      <span className="mr-2">Diagnosis: {result.metadata.diagnosis}</span>
+                                                    )}
+                                                    {result.metadata.symptoms && result.metadata.symptoms.length > 0 && (
+                                                      <span>Symptoms: {result.metadata.symptoms.length}</span>
+                                                    )}
+                                                  </div>
+                                                )}
+                                              </>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {result.aiModel?.name || 'N/A'}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        <div className="flex items-center space-x-1">
+                                          <Clock className="h-3 w-3 text-gray-400" />
+                                          <span>{new Date(result.createdAt).toLocaleDateString()}</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div className="flex items-center space-x-2">
+                                          <button
+                                            onClick={() => {
+                                              setSelectedResult(result);
+                                              setShowModal(true);
+                                            }}
+                                            className="text-blue-600 hover:text-blue-900 flex items-center space-x-1"
+                                          >
+                                            <Eye className="h-4 w-4" />
+                                            <span>View</span>
+                                          </button>
+                                          <button
+                                            onClick={() => handleDeleteResult(result._id, result.title)}
+                                            className="text-red-600 hover:text-red-900 flex items-center space-x-1"
+                                            title="Delete"
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                            <span>Delete</span>
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -888,16 +913,16 @@ export default function PatientViewPage() {
               <div className={`bg-gray-50 rounded-lg p-6 ${selectedResult.type === 'image-analysis' ? 'max-h-[80vh]' : 'max-h-[600px]'} overflow-y-auto`}>
                 {selectedResult.type === 'image-analysis' && selectedResult.rawData?.imageUrl && (
                   <div className="mb-6 flex justify-center bg-white p-4 rounded-lg shadow-inner">
-                    <img 
-                      src={selectedResult.rawData.imageUrl} 
-                      alt="Medical Image" 
+                    <img
+                      src={selectedResult.rawData.imageUrl}
+                      alt="Medical Image"
                       className="max-w-full h-auto rounded-lg shadow-lg"
                       style={{ maxHeight: '70vh', width: 'auto' }}
                     />
                   </div>
                 )}
-                <FormattedAIResult 
-                  content={selectedResult.content} 
+                <FormattedAIResult
+                  content={selectedResult.content}
                   type={selectedResult.type}
                 />
               </div>
@@ -969,11 +994,10 @@ export default function PatientViewPage() {
                   {selectedTreatmentPlanSymptom && (
                     <button
                       onClick={() => setTreatmentPlanModalTab('symptoms')}
-                      className={`py-3 px-1 border-b-2 font-medium text-sm ${
-                        treatmentPlanModalTab === 'symptoms'
-                          ? 'border-indigo-500 text-indigo-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
+                      className={`py-3 px-1 border-b-2 font-medium text-sm ${treatmentPlanModalTab === 'symptoms'
+                        ? 'border-indigo-500 text-indigo-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
                     >
                       <div className="flex items-center space-x-2">
                         <Brain className="h-4 w-4" />
@@ -983,11 +1007,10 @@ export default function PatientViewPage() {
                   )}
                   <button
                     onClick={() => setTreatmentPlanModalTab('treatment')}
-                    className={`py-3 px-1 border-b-2 font-medium text-sm ${
-                      treatmentPlanModalTab === 'treatment'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
+                    className={`py-3 px-1 border-b-2 font-medium text-sm ${treatmentPlanModalTab === 'treatment'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
                   >
                     <div className="flex items-center space-x-2">
                       <Pill className="h-4 w-4" />
@@ -1014,8 +1037,8 @@ export default function PatientViewPage() {
                         <span>{new Date(selectedTreatmentPlanSymptom.createdAt).toLocaleString()}</span>
                       </span>
                     </div>
-                    <FormattedAIResult 
-                      content={selectedTreatmentPlanSymptom.content} 
+                    <FormattedAIResult
+                      content={selectedTreatmentPlanSymptom.content}
                       type={selectedTreatmentPlanSymptom.type}
                     />
                     {selectedTreatmentPlanSymptom.metadata && (
@@ -1030,8 +1053,8 @@ export default function PatientViewPage() {
                   </div>
                 ) : (
                   <div>
-                    <FormattedAIResult 
-                      content={selectedTreatmentPlan.content} 
+                    <FormattedAIResult
+                      content={selectedTreatmentPlan.content}
                       type={selectedTreatmentPlan.type}
                     />
                     {selectedTreatmentPlan.metadata && (
@@ -1095,8 +1118,8 @@ export default function PatientViewPage() {
                 </span>
               </div>
               <div className="bg-gray-50 rounded-lg p-6 max-h-[600px] overflow-y-auto">
-                <FormattedAIResult 
-                  content={selectedSymptomAnalysis.content} 
+                <FormattedAIResult
+                  content={selectedSymptomAnalysis.content}
                   type={selectedSymptomAnalysis.type}
                 />
               </div>

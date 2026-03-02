@@ -17,6 +17,10 @@ export interface IAppointment {
   symptoms?: string[];
   diagnosis?: string;
   treatment?: string;
+  encounterId?: string; // Reference to Encounter
+  relatedEncounterId?: string; // For follow-up linking
+  planId?: string;
+  planStageId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -92,6 +96,22 @@ const appointmentSchema = new mongoose.Schema<IAppointment>(
     treatment: {
       type: String,
       trim: true,
+    },
+    encounterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Encounter',
+    },
+    relatedEncounterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Encounter',
+    },
+    planId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TreatmentPlan',
+    },
+    planStageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PlanStage',
     },
   },
   {

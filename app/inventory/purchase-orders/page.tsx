@@ -181,7 +181,7 @@ export default function PurchaseOrdersPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('inventory.orderNumber')}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('inventory.supplier')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('inventory.orderSupplier')}</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('inventory.items')}</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('inventory.total')}</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('inventory.status')}</th>

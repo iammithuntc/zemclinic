@@ -113,7 +113,7 @@ export default function ServiceItemsPage() {
     <ProtectedRoute>
       <SidebarLayout
         title={t('billing.serviceItems.title')}
-        description={t('billing.serviceItems.description')}
+        description={t('billing.serviceItems.itemDescription')}
       >
         <div className="space-y-6">
           {/* Header */}
@@ -210,7 +210,7 @@ export default function ServiceItemsPage() {
                       {t('billing.serviceItems.name')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('billing.serviceItems.description')}
+                      {t('billing.serviceItems.itemDescription')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {t('billing.serviceItems.serviceType')}

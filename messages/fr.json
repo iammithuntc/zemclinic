@@ -248,7 +248,7 @@
     "editWardDescription": "Mettre à jour les informations et détails de la salle",
     "bedsInWard": "Beds in Ward",
     "addBed": "Add Bed",
-    "noBeds": "Aucun lit trouvé",
+    "noBedsInWard": "Aucun lit trouvé dans cette salle",
     "legend": "Legend",
     "occupancy": "Occupancy",
     "wardTypes": {
@@ -273,6 +273,7 @@
     "allWards": "Toutes les Salles",
     "allStatuses": "Tous les États",
     "underMaintenance": "En Maintenance",
+    "noBedsFound": "Aucun lit trouvé",
     "noBedsDescription": "Créez votre premier lit pour commencer",
     "currentPatient": "Patient Actuel",
     "bedStatusLabels": {
@@ -447,7 +448,7 @@
     "searchPatient": "Rechercher un patient...",
     "patientAge": "Âge",
     "patientGender": "Sexe",
-    "studyDetails": "Détails de l'examen",
+    "studyInformation": "Détails de l'examen",
     "selectBodyPart": "Sélectionner une partie du corps",
     "studyDescription": "Description de l'examen",
     "studyDescriptionPlaceholder": "ex. : Radiographie thoracique PA et latérale",
@@ -650,6 +651,7 @@
     "noSuppliersDescription": "Commencez par ajouter votre premier fournisseur",
     "confirmDeleteSupplier": "Êtes-vous sûr de vouloir supprimer ce fournisseur ?",
     "supplierInfo": "Informations sur le fournisseur",
+    "supplierLabel": "Fournisseur",
     "supplierName": "Nom du fournisseur",
     "contactPerson": "Contact",
     "email": "E-mail",

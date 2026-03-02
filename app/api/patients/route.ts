@@ -7,7 +7,9 @@ import bcrypt from 'bcryptjs';
 export async function GET() {
   try {
     await dbConnect();
-    const patients = await Patient.find({}).sort({ createdAt: -1 });
+    const patients = await Patient.find({})
+      .populate('assignedDoctorId', 'name email specialization')
+      .sort({ createdAt: -1 });
     return NextResponse.json(patients);
   } catch (error) {
     console.error('Error fetching patients:', error);
@@ -19,10 +21,10 @@ export async function POST(request: NextRequest) {
   try {
     await dbConnect();
     const body = await request.json();
-    
+
     // Debug: Log the incoming data
     console.log('Incoming patient data:', JSON.stringify(body, null, 2));
-    
+
     // Clean up the data: convert empty strings to undefined for optional fields
     const cleanedData: any = {
       name: body.name,
@@ -34,15 +36,15 @@ export async function POST(request: NextRequest) {
       allergies: body.allergies || [],
       currentMedications: body.currentMedications || [],
     };
-    
+
     // Validate required fields
     if (!cleanedData.name || !cleanedData.email || !cleanedData.dateOfBirth || !cleanedData.phone || !cleanedData.gender) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Missing required fields',
         details: 'Name, email, date of birth, phone, and gender are required'
       }, { status: 400 });
     }
-    
+
     // Handle password if provided (for patient login)
     if (body.password && body.password.trim()) {
       // Hash the password before storing
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
     if (body.bloodType && body.bloodType.trim() && body.bloodType !== 'none') {
       cleanedData.bloodType = body.bloodType;
     }
-    
+
     // Handle emergency contact - only include if at least one field has a value
     if (body.emergencyContact) {
       const emergencyContact: any = {};
@@ -68,13 +70,13 @@ export async function POST(request: NextRequest) {
       if (body.emergencyContact.relationship && body.emergencyContact.relationship.trim()) {
         emergencyContact.relationship = body.emergencyContact.relationship.trim();
       }
-      
+
       // Only add emergencyContact if it has at least one field
       if (Object.keys(emergencyContact).length > 0) {
         cleanedData.emergencyContact = emergencyContact;
       }
     }
-    
+
     // Generate patient ID if not provided
     if (!cleanedData.patientId) {
       try {
@@ -92,11 +94,11 @@ export async function POST(request: NextRequest) {
         cleanedData.patientId = `PAT-${Date.now().toString().slice(-6)}`;
       }
     }
-    
+
     console.log('Cleaned patient data:', JSON.stringify(cleanedData, null, 2));
-    
+
     const patient = new Patient(cleanedData);
-    
+
     // Validate the patient before saving
     const validationError = patient.validateSync();
     if (validationError) {
@@ -107,14 +109,14 @@ export async function POST(request: NextRequest) {
           errorMessages.push(`${key}: ${validationError.errors[key].message}`);
         });
       }
-      return NextResponse.json({ 
-        error: 'Patient validation failed', 
-        details: errorMessages.length > 0 ? errorMessages.join(', ') : validationError.message 
+      return NextResponse.json({
+        error: 'Patient validation failed',
+        details: errorMessages.length > 0 ? errorMessages.join(', ') : validationError.message
       }, { status: 400 });
     }
-    
+
     await patient.save();
-    
+
     // If password was provided, create a User account for patient login
     if (body.password && body.password.trim()) {
       try {
@@ -144,7 +146,7 @@ export async function POST(request: NextRequest) {
         console.error('Error creating user account for patient:', userError);
         // If user creation fails due to duplicate email, return error
         if (userError.code === 11000) {
-          return NextResponse.json({ 
+          return NextResponse.json({
             error: 'User account creation failed',
             details: 'A user account with this email already exists'
           }, { status: 400 });
@@ -153,20 +155,20 @@ export async function POST(request: NextRequest) {
         console.warn('User account creation failed, but patient was created:', userError.message);
       }
     }
-    
+
     return NextResponse.json(patient, { status: 201 });
   } catch (error: any) {
     console.error('Error creating patient:', error);
-    
+
     // Handle duplicate key error (e.g., duplicate email)
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Duplicate entry',
         details: `${field} already exists`
       }, { status: 400 });
     }
-    
+
     // Handle validation errors
     if (error.name === 'ValidationError') {
       const errorMessages: string[] = [];
@@ -175,13 +177,13 @@ export async function POST(request: NextRequest) {
           errorMessages.push(`${key}: ${error.errors[key].message}`);
         });
       }
-      return NextResponse.json({ 
-        error: 'Patient validation failed', 
-        details: errorMessages.length > 0 ? errorMessages.join(', ') : error.message 
+      return NextResponse.json({
+        error: 'Patient validation failed',
+        details: errorMessages.length > 0 ? errorMessages.join(', ') : error.message
       }, { status: 400 });
     }
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       error: 'Failed to create patient',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });

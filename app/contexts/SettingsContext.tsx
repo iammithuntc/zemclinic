@@ -17,6 +17,8 @@ interface Settings {
   appointmentReminders: boolean;
   reminderTime: number;
   maxAppointmentsPerDay: number;
+  logo?: string;
+  favicon?: string;
   workingHours: {
     start: string;
     end: string;
@@ -73,6 +75,8 @@ const defaultSettings: Settings = {
   appointmentReminders: true,
   reminderTime: 30,
   maxAppointmentsPerDay: 50,
+  logo: '',
+  favicon: '',
   workingHours: {
     start: '09:00',
     end: '17:00',
@@ -165,7 +169,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   // Fetch settings on mount and when session becomes authenticated
   useEffect(() => {
     if (status === 'authenticated') {
-    fetchSettings();
+      fetchSettings();
     } else if (status === 'unauthenticated') {
       // Clear settings when logged out
       setSettings(null);

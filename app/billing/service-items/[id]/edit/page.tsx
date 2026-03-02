@@ -107,7 +107,7 @@ export default function EditServiceItemPage() {
     <ProtectedRoute>
       <SidebarLayout
         title={t('billing.serviceItems.editItem')}
-        description={t('billing.serviceItems.description')}
+        description={t('billing.serviceItems.itemDescription')}
       >
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -136,7 +136,7 @@ export default function EditServiceItemPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('billing.serviceItems.description')} *
+                {t('billing.serviceItems.itemDescription')} *
               </label>
               <textarea
                 value={formData.description}

@@ -9,7 +9,7 @@ import { useTranslations } from '@/app/hooks/useTranslations';
 import SearchablePatientSelect from '@/app/components/SearchablePatientSelect';
 import { ArrowLeft, Save, Radio } from 'lucide-react';
 
-interface Patient { _id: string; name: string; email?: string; phone?: string; dateOfBirth?: string; gender?: string; }
+interface Patient { _id: string; patientId: string; name: string; email?: string; phone?: string; dateOfBirth?: string | Date; gender?: string; }
 interface Doctor { _id: string; name: string; specialization?: string; }
 
 export default function NewRadiologyStudyPage() {
@@ -52,12 +52,12 @@ export default function NewRadiologyStudyPage() {
           console.error('Error calculating age:', e);
         }
       }
-      setFormData(prev => ({ 
-        ...prev, 
-        patientId: patient._id, 
-        patientName: patient.name, 
-        patientAge: age, 
-        patientGender: patient.gender || '' 
+      setFormData(prev => ({
+        ...prev,
+        patientId: patient._id,
+        patientName: patient.name,
+        patientAge: age,
+        patientGender: patient.gender || ''
       }));
     } else {
       setFormData(prev => ({ ...prev, patientId: '', patientName: '', patientAge: '', patientGender: '' }));
@@ -137,7 +137,7 @@ export default function NewRadiologyStudyPage() {
 
             {/* Study Details */}
             <div className="bg-white rounded-lg p-6">
-              <h3 className="text-lg font-semibold mb-4">{t('radiology.studyDetails')}</h3>
+              <h3 className="text-lg font-semibold mb-4">{t('radiology.studyInformation')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('radiology.studyType')} *</label>

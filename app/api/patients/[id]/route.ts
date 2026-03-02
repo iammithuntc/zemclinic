@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
 import Patient from '@/models/Patient';
 
@@ -9,15 +10,23 @@ export async function GET(
   try {
     await dbConnect();
     const { id } = await params;
-    const patient = await Patient.findById(id);
-    
+    let patient = null;
+
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      patient = await Patient.findById(id).populate('assignedDoctorId', 'name email specialization');
+    }
+
+    if (!patient) {
+      patient = await Patient.findOne({ patientId: id }).populate('assignedDoctorId', 'name email specialization');
+    }
+
     if (!patient) {
       return NextResponse.json(
         { error: 'Patient not found' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json(patient);
   } catch (error) {
     console.error('Error fetching patient:', error);
@@ -35,21 +44,21 @@ export async function PUT(
   try {
     await dbConnect();
     const body = await request.json();
-    
+
     const { id } = await params;
     const patient = await Patient.findByIdAndUpdate(
       id,
       body,
       { new: true, runValidators: true }
     );
-    
+
     if (!patient) {
       return NextResponse.json(
         { error: 'Patient not found' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json(patient);
   } catch (error) {
     console.error('Error updating patient:', error);
@@ -68,14 +77,14 @@ export async function DELETE(
     await dbConnect();
     const { id } = await params;
     const patient = await Patient.findByIdAndDelete(id);
-    
+
     if (!patient) {
       return NextResponse.json(
         { error: 'Patient not found' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json({ message: 'Patient deleted successfully' });
   } catch (error) {
     console.error('Error deleting patient:', error);

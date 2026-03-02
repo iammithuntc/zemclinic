@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { 
-  Calendar, 
-  Clock, 
-  User, 
-  Phone, 
-  Mail, 
-  MapPin, 
+import {
+  Calendar,
+  Clock,
+  User,
+  Phone,
+  Mail,
+  MapPin,
   Stethoscope,
   Save,
   ArrowLeft,
@@ -47,6 +47,8 @@ interface AppointmentFormData {
   reason: string;
   notes: string;
   status: string;
+  planId?: string;
+  planStageId?: string;
 }
 
 interface Doctor {
@@ -79,7 +81,9 @@ export default function NewAppointmentPage() {
     appointmentType: 'consultation',
     reason: '',
     notes: '',
-    status: 'scheduled'
+    status: 'scheduled',
+    planId: '',
+    planStageId: ''
   });
 
   // Auto-set doctor if logged in as doctor
@@ -94,10 +98,77 @@ export default function NewAppointmentPage() {
       setSelectedDoctor(doctor);
       setFormData(prev => ({
         ...prev,
-        doctorName: session.user.name
+        doctorName: session.user.name || ''
       }));
     }
   }, [session]);
+
+  const searchParams = useSearchParams();
+
+  // Pre-fill from query params (e.g., when coming from Treatment Plan stage)
+  useEffect(() => {
+    const patientId = searchParams.get('patient');
+    const planId = searchParams.get('plan');
+    const stageId = searchParams.get('stage');
+    const doctorNameParam = searchParams.get('doctorName');
+
+    if (patientId) {
+      // Fetch patient details if we only have ID
+      fetch(`/api/patients/${patientId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.error) {
+            handlePatientSelect(data);
+            // Move to the next tab if we have a patient
+            setActiveTab('appointment');
+          }
+        })
+        .catch(err => console.error("Auto-fill fetch failed:", err));
+    }
+
+    if (doctorNameParam) {
+      setFormData(prev => ({ ...prev, doctorName: doctorNameParam }));
+      // Fetch doctor by name to set the selectedDoctor state
+      fetch(`/api/doctors`).then(res => res.json()).then(doctors => {
+        if (Array.isArray(doctors)) {
+          const doctor = doctors.find((d: any) => d.name === doctorNameParam);
+          if (doctor) {
+            setSelectedDoctor(doctor);
+          } else {
+            // Set a placeholder if not found
+            setSelectedDoctor({
+              _id: '',
+              name: doctorNameParam,
+              email: '',
+              role: 'doctor'
+            } as any);
+          }
+        }
+      });
+    }
+
+    if (planId && stageId) {
+      setFormData(prev => ({
+        ...prev,
+        planId: planId,
+        planStageId: stageId
+      }));
+
+      // Fetch stage details to get name/reason
+      fetch(`/api/treatment-plans/${planId}`).then(res => res.json()).then(data => {
+        if (data && data.stages) {
+          const stage = data.stages.find((s: any) => s._id === stageId);
+          if (stage) {
+            setFormData(prev => ({
+              ...prev,
+              reason: `Treatment Plan: ${data.plan.title} - ${stage.name}`,
+              appointmentType: 'follow-up'
+            }));
+          }
+        }
+      });
+    }
+  }, [searchParams]);
 
   // Handle doctor selection
   const handleDoctorSelect = (doctor: Doctor | null) => {
@@ -138,7 +209,7 @@ export default function NewAppointmentPage() {
       ...prev,
       [name]: value
     }));
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -194,7 +265,7 @@ export default function NewAppointmentPage() {
       const selectedDate = new Date(formData.appointmentDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       if (selectedDate < today) {
         newErrors.appointmentDate = t('appointments.validation.appointmentDatePast');
       }
@@ -214,7 +285,7 @@ export default function NewAppointmentPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -282,8 +353,8 @@ export default function NewAppointmentPage() {
 
   return (
     <ProtectedRoute>
-      <SidebarLayout 
-        title={t('appointments.newAppointment')} 
+      <SidebarLayout
+        title={t('appointments.newAppointment')}
         description={t('appointments.newAppointmentDesc')}
       >
         <div className="max-w-6xl mx-auto">
@@ -308,26 +379,23 @@ export default function NewAppointmentPage() {
                 { id: 'review', label: t('appointments.tabs.review'), icon: CheckCircle }
               ].map((step, index) => (
                 <div key={step.id} className="flex items-center">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                    activeTab === step.id 
-                      ? 'bg-blue-600 border-blue-600 text-white' 
-                      : isTabValid(step.id)
-                        ? 'bg-green-100 border-green-500 text-green-600'
-                        : 'bg-gray-100 border-gray-300 text-gray-500'
-                  }`}>
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${activeTab === step.id
+                    ? 'bg-blue-600 border-blue-600 text-white'
+                    : isTabValid(step.id)
+                      ? 'bg-green-100 border-green-500 text-green-600'
+                      : 'bg-gray-100 border-gray-300 text-gray-500'
+                    }`}>
                     <step.icon className="w-5 h-5" />
                   </div>
                   <div className="ml-3">
-                    <p className={`text-sm font-medium ${
-                      activeTab === step.id ? 'text-blue-600' : 'text-gray-500'
-                    }`}>
+                    <p className={`text-sm font-medium ${activeTab === step.id ? 'text-blue-600' : 'text-gray-500'
+                      }`}>
                       {step.label}
                     </p>
                   </div>
                   {index < 3 && (
-                    <div className={`w-16 h-0.5 mx-4 ${
-                      isTabValid(step.id) ? 'bg-green-500' : 'bg-gray-300'
-                    }`} />
+                    <div className={`w-16 h-0.5 mx-4 ${isTabValid(step.id) ? 'bg-green-500' : 'bg-gray-300'
+                      }`} />
                   )}
                 </div>
               ))}
@@ -346,11 +414,10 @@ export default function NewAppointmentPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
-                    activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
                 >
                   <tab.icon className="w-4 h-4" />
                   <span>{tab.label}</span>
@@ -362,406 +429,401 @@ export default function NewAppointmentPage() {
           {/* Tab Content */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            {/* Patient Information Tab */}
-            {activeTab === 'patient' && (
-              <div className="space-y-6">
-                <div className="flex items-center mb-6">
-                  <User className="w-6 h-6 text-blue-600 mr-3" />
-                  <h2 className="text-xl font-semibold text-gray-900">{t('appointments.tabs.patientInfo')}</h2>
-                </div>
-                
-                {/* Patient Selection */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('appointments.selectPatient')} *
-                  </label>
-                  <SearchablePatientSelect
-                    value={selectedPatient?.name || ''}
-                    onChange={handlePatientSelect}
-                    placeholder={t('appointments.placeholders.selectPatient')}
-                    className="w-full"
-                  />
-                  {errors.patientName && (
-                    <p className="mt-1 text-sm text-red-600 flex items-center">
-                      <AlertCircle className="w-4 h-4 mr-1" />
-                      {errors.patientName}
-                    </p>
-                  )}
-                </div>
-
-                {/* Manual Patient Entry */}
-                <div className="border-t pt-6">
-                  <div className="flex items-center mb-4">
-                    <h3 className="text-lg font-medium text-gray-900">{t('appointments.manualEntry')}</h3>
-                    <span className="ml-2 text-sm text-gray-500">({t('appointments.or')})</span>
+              {/* Patient Information Tab */}
+              {activeTab === 'patient' && (
+                <div className="space-y-6">
+                  <div className="flex items-center mb-6">
+                    <User className="w-6 h-6 text-blue-600 mr-3" />
+                    <h2 className="text-xl font-semibold text-gray-900">{t('appointments.tabs.patientInfo')}</h2>
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="patientEmail" className="block text-sm font-medium text-gray-700 mb-2">
-                        {t('appointments.patientEmail')} *
-                      </label>
-                      <input
-                        type="email"
-                        id="patientEmail"
-                        name="patientEmail"
-                        value={formData.patientEmail}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                          errors.patientEmail ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder={t('appointments.placeholders.patientEmail')}
-                      />
-                      {errors.patientEmail && (
-                        <p className="mt-1 text-sm text-red-600 flex items-center">
-                          <AlertCircle className="w-4 h-4 mr-1" />
-                          {errors.patientEmail}
-                        </p>
-                      )}
-                    </div>
 
-                    <div>
-                      <label htmlFor="patientPhone" className="block text-sm font-medium text-gray-700 mb-2">
-                        {t('appointments.patientPhone')} *
-                      </label>
-                      <input
-                        type="tel"
-                        id="patientPhone"
-                        name="patientPhone"
-                        value={formData.patientPhone}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                          errors.patientPhone ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder={t('appointments.placeholders.patientPhone')}
-                      />
-                      {errors.patientPhone && (
-                        <p className="mt-1 text-sm text-red-600 flex items-center">
-                          <AlertCircle className="w-4 h-4 mr-1" />
-                          {errors.patientPhone}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Appointment Details Tab */}
-            {activeTab === 'appointment' && (
-              <div className="space-y-6">
-                <div className="flex items-center mb-6">
-                  <Calendar className="w-6 h-6 text-green-600 mr-3" />
-                  <h2 className="text-xl font-semibold text-gray-900">{t('appointments.tabs.appointmentDetails')}</h2>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="doctorName" className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('appointments.doctorName')} *
+                  {/* Patient Selection */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {t('appointments.selectPatient')} *
                     </label>
-                    <SearchableDoctorSelect
-                      value={formData.doctorName}
-                      onChange={handleDoctorSelect}
-                      placeholder={t('appointments.placeholders.selectDoctor') || 'Select a doctor'}
-                      disabled={session?.user?.role === 'doctor'}
-                      className={errors.doctorName ? 'border-red-300' : ''}
+                    <SearchablePatientSelect
+                      value={selectedPatient?.name || ''}
+                      onChange={handlePatientSelect}
+                      placeholder={t('appointments.placeholders.selectPatient')}
+                      className="w-full"
                     />
-                    {errors.doctorName && (
+                    {errors.patientName && (
                       <p className="mt-1 text-sm text-red-600 flex items-center">
                         <AlertCircle className="w-4 h-4 mr-1" />
-                        {errors.doctorName}
+                        {errors.patientName}
                       </p>
                     )}
-                    
-                    {/* Doctor Details Card */}
-                    {selectedDoctor && (
-                      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-start space-x-3">
-                          <div className="flex-shrink-0">
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                              <Stethoscope className="h-5 w-5 text-blue-600" />
-                            </div>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-semibold text-gray-900 mb-2">
-                              {selectedDoctor.name}
-                            </h4>
-                            <div className="space-y-1.5 text-xs text-gray-600">
-                              <div className="flex items-center">
-                                <Mail className="h-3 w-3 mr-2 text-gray-400 flex-shrink-0" />
-                                <span className="truncate">{selectedDoctor.email}</span>
+                  </div>
+
+                  {/* Manual Patient Entry */}
+                  <div className="border-t pt-6">
+                    <div className="flex items-center mb-4">
+                      <h3 className="text-lg font-medium text-gray-900">{t('appointments.manualEntry')}</h3>
+                      <span className="ml-2 text-sm text-gray-500">({t('appointments.or')})</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label htmlFor="patientEmail" className="block text-sm font-medium text-gray-700 mb-2">
+                          {t('appointments.patientEmail')} *
+                        </label>
+                        <input
+                          type="email"
+                          id="patientEmail"
+                          name="patientEmail"
+                          value={formData.patientEmail}
+                          onChange={handleInputChange}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.patientEmail ? 'border-red-300' : 'border-gray-300'
+                            }`}
+                          placeholder={t('appointments.placeholders.patientEmail')}
+                        />
+                        {errors.patientEmail && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <AlertCircle className="w-4 h-4 mr-1" />
+                            {errors.patientEmail}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="patientPhone" className="block text-sm font-medium text-gray-700 mb-2">
+                          {t('appointments.patientPhone')} *
+                        </label>
+                        <input
+                          type="tel"
+                          id="patientPhone"
+                          name="patientPhone"
+                          value={formData.patientPhone}
+                          onChange={handleInputChange}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.patientPhone ? 'border-red-300' : 'border-gray-300'
+                            }`}
+                          placeholder={t('appointments.placeholders.patientPhone')}
+                        />
+                        {errors.patientPhone && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <AlertCircle className="w-4 h-4 mr-1" />
+                            {errors.patientPhone}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Appointment Details Tab */}
+              {activeTab === 'appointment' && (
+                <div className="space-y-6">
+                  <div className="flex items-center mb-6">
+                    <Calendar className="w-6 h-6 text-green-600 mr-3" />
+                    <h2 className="text-xl font-semibold text-gray-900">{t('appointments.tabs.appointmentDetails')}</h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="doctorName" className="block text-sm font-medium text-gray-700 mb-2">
+                        {t('appointments.doctorName')} *
+                      </label>
+                      <SearchableDoctorSelect
+                        value={formData.doctorName}
+                        onChange={handleDoctorSelect}
+                        placeholder={t('appointments.placeholders.selectDoctor') || 'Select a doctor'}
+                        disabled={session?.user?.role === 'doctor'}
+                        className={errors.doctorName ? 'border-red-300' : ''}
+                      />
+                      {errors.doctorName && (
+                        <p className="mt-1 text-sm text-red-600 flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-1" />
+                          {errors.doctorName}
+                        </p>
+                      )}
+
+                      {/* Doctor Details Card */}
+                      {selectedDoctor && (
+                        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="flex items-start space-x-3">
+                            <div className="flex-shrink-0">
+                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <Stethoscope className="h-5 w-5 text-blue-600" />
                               </div>
-                              {selectedDoctor.qualifications && selectedDoctor.qualifications.length > 0 && (
-                                <div className="flex items-start">
-                                  <Award className="h-3 w-3 mr-2 text-gray-400 flex-shrink-0 mt-0.5" />
-                                  <div className="flex flex-wrap gap-1">
-                                    {selectedDoctor.qualifications.map((qual, index) => (
-                                      <span key={index} className="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">
-                                        {qual}
-                                      </span>
-                                    ))}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                                {selectedDoctor.name}
+                              </h4>
+                              <div className="space-y-1.5 text-xs text-gray-600">
+                                <div className="flex items-center">
+                                  <Mail className="h-3 w-3 mr-2 text-gray-400 flex-shrink-0" />
+                                  <span className="truncate">{selectedDoctor.email}</span>
+                                </div>
+                                {selectedDoctor.qualifications && selectedDoctor.qualifications.length > 0 && (
+                                  <div className="flex items-start">
+                                    <Award className="h-3 w-3 mr-2 text-gray-400 flex-shrink-0 mt-0.5" />
+                                    <div className="flex flex-wrap gap-1">
+                                      {selectedDoctor.qualifications.map((qual, index) => (
+                                        <span key={index} className="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">
+                                          {qual}
+                                        </span>
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
-                              {selectedDoctor.specialization && (
-                                <div className="flex items-center">
-                                  <GraduationCap className="h-3 w-3 mr-2 text-gray-400 flex-shrink-0" />
-                                  <span className="truncate">{selectedDoctor.specialization}</span>
-                                </div>
-                              )}
-                              {selectedDoctor.department && (
-                                <div className="flex items-center">
-                                  <Building className="h-3 w-3 mr-2 text-gray-400 flex-shrink-0" />
-                                  <span className="truncate">{selectedDoctor.department}</span>
-                                </div>
-                              )}
+                                )}
+                                {selectedDoctor.specialization && (
+                                  <div className="flex items-center">
+                                    <GraduationCap className="h-3 w-3 mr-2 text-gray-400 flex-shrink-0" />
+                                    <span className="truncate">{selectedDoctor.specialization}</span>
+                                  </div>
+                                )}
+                                {selectedDoctor.department && (
+                                  <div className="flex items-center">
+                                    <Building className="h-3 w-3 mr-2 text-gray-400 flex-shrink-0" />
+                                    <span className="truncate">{selectedDoctor.department}</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
 
-                  <div>
-                    <label htmlFor="appointmentType" className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('appointments.appointmentType')}
-                    </label>
-                    <select
-                      id="appointmentType"
-                      name="appointmentType"
-                      value={formData.appointmentType}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      {appointmentTypes.map((type) => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                    <div>
+                      <label htmlFor="appointmentType" className="block text-sm font-medium text-gray-700 mb-2">
+                        {t('appointments.appointmentType')}
+                      </label>
+                      <select
+                        id="appointmentType"
+                        name="appointmentType"
+                        value={formData.appointmentType}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        {appointmentTypes.map((type) => (
+                          <option key={type.value} value={type.value}>
+                            {type.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                  <div>
-                    <label htmlFor="appointmentDate" className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('appointments.appointmentDate')} *
-                    </label>
-                    <input
-                      type="date"
-                      id="appointmentDate"
-                      name="appointmentDate"
-                      value={formData.appointmentDate}
-                      onChange={handleInputChange}
-                      min={new Date().toISOString().split('T')[0]}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        errors.appointmentDate ? 'border-red-300' : 'border-gray-300'
-                      }`}
-                    />
-                    {errors.appointmentDate && (
-                      <p className="mt-1 text-sm text-red-600 flex items-center">
-                        <AlertCircle className="w-4 h-4 mr-1" />
-                        {errors.appointmentDate}
-                      </p>
-                    )}
-                  </div>
+                    <div>
+                      <label htmlFor="appointmentDate" className="block text-sm font-medium text-gray-700 mb-2">
+                        {t('appointments.appointmentDate')} *
+                      </label>
+                      <input
+                        type="date"
+                        id="appointmentDate"
+                        name="appointmentDate"
+                        value={formData.appointmentDate}
+                        onChange={handleInputChange}
+                        min={new Date().toISOString().split('T')[0]}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.appointmentDate ? 'border-red-300' : 'border-gray-300'
+                          }`}
+                      />
+                      {errors.appointmentDate && (
+                        <p className="mt-1 text-sm text-red-600 flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-1" />
+                          {errors.appointmentDate}
+                        </p>
+                      )}
+                    </div>
 
-                  <div>
-                    <label htmlFor="appointmentTime" className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('appointments.appointmentTime')} *
-                    </label>
-                    <input
-                      type="time"
-                      id="appointmentTime"
-                      name="appointmentTime"
-                      value={formData.appointmentTime}
-                      onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        errors.appointmentTime ? 'border-red-300' : 'border-gray-300'
-                      }`}
-                    />
-                    {errors.appointmentTime && (
-                      <p className="mt-1 text-sm text-red-600 flex items-center">
-                        <AlertCircle className="w-4 h-4 mr-1" />
-                        {errors.appointmentTime}
-                      </p>
-                    )}
-                  </div>
+                    <div>
+                      <label htmlFor="appointmentTime" className="block text-sm font-medium text-gray-700 mb-2">
+                        {t('appointments.appointmentTime')} *
+                      </label>
+                      <input
+                        type="time"
+                        id="appointmentTime"
+                        name="appointmentTime"
+                        value={formData.appointmentTime}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.appointmentTime ? 'border-red-300' : 'border-gray-300'
+                          }`}
+                      />
+                      {errors.appointmentTime && (
+                        <p className="mt-1 text-sm text-red-600 flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-1" />
+                          {errors.appointmentTime}
+                        </p>
+                      )}
+                    </div>
 
-                  <div>
-                    <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('appointments.status')}
-                    </label>
-                    <select
-                      id="status"
-                      name="status"
-                      value={formData.status}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      {statusOptions.map((status) => (
-                        <option key={status.value} value={status.value}>
-                          {status.label}
-                        </option>
-                      ))}
-                    </select>
+                    <div>
+                      <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
+                        {t('appointments.status')}
+                      </label>
+                      <select
+                        id="status"
+                        name="status"
+                        value={formData.status}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        {statusOptions.map((status) => (
+                          <option key={status.value} value={status.value}>
+                            {status.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Additional Details Tab */}
-            {activeTab === 'details' && (
-              <div className="space-y-6">
-                <div className="flex items-center mb-6">
-                  <FileText className="w-6 h-6 text-purple-600 mr-3" />
-                  <h2 className="text-xl font-semibold text-gray-900">{t('appointments.tabs.additionalInfo')}</h2>
-                </div>
-                
+              {/* Additional Details Tab */}
+              {activeTab === 'details' && (
                 <div className="space-y-6">
-                  <div>
-                    <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('appointments.reason')} *
-                    </label>
-                    <textarea
-                      id="reason"
-                      name="reason"
-                      value={formData.reason}
-                      onChange={handleInputChange}
-                      rows={4}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        errors.reason ? 'border-red-300' : 'border-gray-300'
-                      }`}
-                      placeholder={t('appointments.placeholders.reason')}
-                    />
-                    {errors.reason && (
-                      <p className="mt-1 text-sm text-red-600 flex items-center">
-                        <AlertCircle className="w-4 h-4 mr-1" />
-                        {errors.reason}
-                      </p>
+                  <div className="flex items-center mb-6">
+                    <FileText className="w-6 h-6 text-purple-600 mr-3" />
+                    <h2 className="text-xl font-semibold text-gray-900">{t('appointments.tabs.additionalInfo')}</h2>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div>
+                      <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
+                        {t('appointments.reason')} *
+                      </label>
+                      <textarea
+                        id="reason"
+                        name="reason"
+                        value={formData.reason}
+                        onChange={handleInputChange}
+                        rows={4}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.reason ? 'border-red-300' : 'border-gray-300'
+                          }`}
+                        placeholder={t('appointments.placeholders.reason')}
+                      />
+                      {errors.reason && (
+                        <p className="mt-1 text-sm text-red-600 flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-1" />
+                          {errors.reason}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
+                        {t('appointments.notes')}
+                      </label>
+                      <textarea
+                        id="notes"
+                        name="notes"
+                        value={formData.notes}
+                        onChange={handleInputChange}
+                        rows={4}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder={t('appointments.placeholders.notes')}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Review Tab */}
+              {activeTab === 'review' && (
+                <div className="space-y-6">
+                  <div className="flex items-center mb-6">
+                    <CheckCircle className="w-6 h-6 text-green-600 mr-3" />
+                    <h2 className="text-xl font-semibold text-gray-900">{t('appointments.tabs.review')}</h2>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-6 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h3 className="font-medium text-gray-900 mb-2">{t('appointments.patientInformation')}</h3>
+                        <div className="space-y-2 text-sm">
+                          <p className="text-gray-700"><span className="font-medium text-gray-900">Name:</span> {formData.patientName || 'Not provided'}</p>
+                          <p className="text-gray-700"><span className="font-medium text-gray-900">Email:</span> {formData.patientEmail || 'Not provided'}</p>
+                          <p className="text-gray-700"><span className="font-medium text-gray-900">Phone:</span> {formData.patientPhone || 'Not provided'}</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="font-medium text-gray-900 mb-2">{t('appointments.appointmentDetails')}</h3>
+                        <div className="space-y-2 text-sm">
+                          <p className="text-gray-700"><span className="font-medium text-gray-900">Doctor:</span> {formData.doctorName || 'Not provided'}</p>
+                          <p className="text-gray-700"><span className="font-medium text-gray-900">Type:</span> {appointmentTypes.find(t => t.value === formData.appointmentType)?.label || 'Not selected'}</p>
+                          <p className="text-gray-700"><span className="font-medium text-gray-900">Date:</span> {formData.appointmentDate || 'Not selected'}</p>
+                          <p className="text-gray-700"><span className="font-medium text-gray-900">Time:</span> {formData.appointmentTime || 'Not selected'}</p>
+                          <p className="text-gray-700"><span className="font-medium text-gray-900">Status:</span> {statusOptions.find(s => s.value === formData.status)?.label || 'Not selected'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {formData.reason && (
+                      <div>
+                        <h3 className="font-medium text-gray-900 mb-2">{t('appointments.reason')}</h3>
+                        <p className="text-sm text-gray-600">{formData.reason}</p>
+                      </div>
+                    )}
+
+                    {formData.notes && (
+                      <div>
+                        <h3 className="font-medium text-gray-900 mb-2">{t('appointments.notes')}</h3>
+                        <p className="text-sm text-gray-600">{formData.notes}</p>
+                      </div>
                     )}
                   </div>
-
-                  <div>
-                    <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('appointments.notes')}
-                    </label>
-                    <textarea
-                      id="notes"
-                      name="notes"
-                      value={formData.notes}
-                      onChange={handleInputChange}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder={t('appointments.placeholders.notes')}
-                    />
-                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Review Tab */}
-            {activeTab === 'review' && (
-              <div className="space-y-6">
-                <div className="flex items-center mb-6">
-                  <CheckCircle className="w-6 h-6 text-green-600 mr-3" />
-                  <h2 className="text-xl font-semibold text-gray-900">{t('appointments.tabs.review')}</h2>
-                </div>
-                
-                <div className="bg-gray-50 rounded-lg p-6 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="font-medium text-gray-900 mb-2">{t('appointments.patientInformation')}</h3>
-                      <div className="space-y-2 text-sm">
-                        <p className="text-gray-700"><span className="font-medium text-gray-900">Name:</span> {formData.patientName || 'Not provided'}</p>
-                        <p className="text-gray-700"><span className="font-medium text-gray-900">Email:</span> {formData.patientEmail || 'Not provided'}</p>
-                        <p className="text-gray-700"><span className="font-medium text-gray-900">Phone:</span> {formData.patientPhone || 'Not provided'}</p>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h3 className="font-medium text-gray-900 mb-2">{t('appointments.appointmentDetails')}</h3>
-                      <div className="space-y-2 text-sm">
-                        <p className="text-gray-700"><span className="font-medium text-gray-900">Doctor:</span> {formData.doctorName || 'Not provided'}</p>
-                        <p className="text-gray-700"><span className="font-medium text-gray-900">Type:</span> {appointmentTypes.find(t => t.value === formData.appointmentType)?.label || 'Not selected'}</p>
-                        <p className="text-gray-700"><span className="font-medium text-gray-900">Date:</span> {formData.appointmentDate || 'Not selected'}</p>
-                        <p className="text-gray-700"><span className="font-medium text-gray-900">Time:</span> {formData.appointmentTime || 'Not selected'}</p>
-                        <p className="text-gray-700"><span className="font-medium text-gray-900">Status:</span> {statusOptions.find(s => s.value === formData.status)?.label || 'Not selected'}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {formData.reason && (
-                    <div>
-                      <h3 className="font-medium text-gray-900 mb-2">{t('appointments.reason')}</h3>
-                      <p className="text-sm text-gray-600">{formData.reason}</p>
-                    </div>
-                  )}
-                  
-                  {formData.notes && (
-                    <div>
-                      <h3 className="font-medium text-gray-900 mb-2">{t('appointments.notes')}</h3>
-                      <p className="text-sm text-gray-600">{formData.notes}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+              )}
             </div>
 
             {/* Tab Navigation Buttons */}
             <div className="flex justify-between mt-6">
-            <div>
-              {activeTab !== 'patient' && (
+              <div>
+                {activeTab !== 'patient' && (
+                  <button
+                    type="button"
+                    onClick={prevTab}
+                    className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                  >
+                    {t('common.previous')}
+                  </button>
+                )}
+              </div>
+
+              <div className="flex space-x-4">
                 <button
                   type="button"
-                  onClick={prevTab}
+                  onClick={handleCancel}
                   className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                 >
-                  {t('common.previous')}
+                  {t('common.cancel')}
                 </button>
-              )}
+
+                {activeTab !== 'review' ? (
+                  <button
+                    type="button"
+                    onClick={nextTab}
+                    disabled={!isTabValid(activeTab)}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {t('common.next')}
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        {t('appointments.creating')}
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        {t('appointments.createAppointment')}
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
-            
-            <div className="flex space-x-4">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-              >
-                {t('common.cancel')}
-              </button>
-              
-              {activeTab !== 'review' ? (
-                <button
-                  type="button"
-                  onClick={nextTab}
-                  disabled={!isTabValid(activeTab)}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {t('common.next')}
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      {t('appointments.creating')}
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      {t('appointments.createAppointment')}
-                    </>
-                  )}
-                </button>
-               )}
-             </div>
-           </div>
-         </form>
+          </form>
         </div>
       </SidebarLayout>
     </ProtectedRoute>

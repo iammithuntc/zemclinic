@@ -176,7 +176,7 @@ function PurchaseOrderViewContent({ params }: { params: Promise<{ id: string }> 
                     <p className="mt-1 text-sm font-medium text-gray-900 font-mono">{order.orderNumber}</p>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase">{t('inventory.supplier')}</label>
+                    <label className="text-xs font-medium text-gray-500 uppercase">{t('inventory.orderSupplier')}</label>
                     <p className="mt-1 text-sm font-medium text-gray-900">{order.supplierName}</p>
                   </div>
                   <div>

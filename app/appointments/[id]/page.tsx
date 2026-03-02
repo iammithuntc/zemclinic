@@ -3,17 +3,18 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  ArrowLeft, 
-  Edit, 
-  Calendar, 
+import {
+  ArrowLeft,
+  Edit,
+  Calendar,
   Clock,
   Users,
   MapPin,
   Phone,
   Mail,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Pill
 } from 'lucide-react';
 import ProtectedRoute from '../../protected-route';
 import SidebarLayout from '../../components/sidebar-layout';
@@ -24,6 +25,8 @@ export default function AppointmentViewPage() {
   const [appointment, setAppointment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [treatmentPlan, setTreatmentPlan] = useState<any>(null);
+  const [planStage, setPlanStage] = useState<any>(null);
 
   useEffect(() => {
     const fetchAppointment = async () => {
@@ -32,6 +35,18 @@ export default function AppointmentViewPage() {
         if (response.ok) {
           const data = await response.json();
           setAppointment(data);
+
+          // Fetch Treatment Plan if linked
+          if (data.planId) {
+            const planRes = await fetch(`/api/treatment-plans/${data.planId}`);
+            if (planRes.ok) {
+              const planData = await planRes.json();
+              setTreatmentPlan(planData.plan);
+              if (data.planStageId && planData.stages) {
+                setPlanStage(planData.stages.find((s: any) => s._id === data.planStageId));
+              }
+            }
+          }
         } else {
           setError('Appointment not found');
         }
@@ -51,8 +66,8 @@ export default function AppointmentViewPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <SidebarLayout 
-          title="Appointment Details" 
+        <SidebarLayout
+          title="Appointment Details"
           description="View appointment information"
         >
           <div className="flex items-center justify-center h-64">
@@ -66,8 +81,8 @@ export default function AppointmentViewPage() {
   if (error || !appointment) {
     return (
       <ProtectedRoute>
-        <SidebarLayout 
-          title="Appointment Not Found" 
+        <SidebarLayout
+          title="Appointment Not Found"
           description="The requested appointment could not be found"
         >
           <div className="text-center py-12">
@@ -93,14 +108,14 @@ export default function AppointmentViewPage() {
 
   return (
     <ProtectedRoute>
-      <SidebarLayout 
-        title="Appointment Details" 
+      <SidebarLayout
+        title="Appointment Details"
         description="View and manage appointment information"
       >
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-6">
-            <Link 
+            <Link
               href="/appointments"
               className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 mb-4"
             >
@@ -112,12 +127,35 @@ export default function AppointmentViewPage() {
                 Appointment: {appointment.patientName}
               </h1>
               <div className="flex space-x-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(`/api/appointments/${appointment._id}/start-encounter`, {
+                        method: 'POST',
+                      });
+                      if (response.ok) {
+                        const encounter = await response.json();
+                        router.push(`/encounters/${encounter._id}`);
+                      } else {
+                        const errorData = await response.json();
+                        console.error('Failed to start encounter:', errorData);
+                        alert(`Failed to start encounter: ${errorData.error || 'Unknown error'}`);
+                      }
+                    } catch (error) {
+                      console.error('Error starting encounter:', error);
+                    }
+                  }}
+                  className="inline-flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>{appointment.encounterId ? 'View Encounter' : 'Start Encounter'}</span>
+                </button>
                 <Link
                   href={`/appointments/${appointment._id}/edit`}
                   className="inline-flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <Edit className="h-4 w-4" />
-                  <span>Edit Appointment</span>
+                  <span>Edit</span>
                 </Link>
                 <Link
                   href={`/appointments/${appointment._id}/reschedule`}
@@ -145,7 +183,7 @@ export default function AppointmentViewPage() {
                       <p className="text-sm text-gray-900">{appointment.patientName}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-3">
                     <Users className="h-5 w-5 text-gray-400" />
                     <div>
@@ -153,7 +191,7 @@ export default function AppointmentViewPage() {
                       <p className="text-sm text-gray-900 font-mono">{appointment.patientId || 'N/A'}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-3">
                     <Users className="h-5 w-5 text-gray-400" />
                     <div>
@@ -161,7 +199,7 @@ export default function AppointmentViewPage() {
                       <p className="text-sm text-gray-900">{appointment.doctorName}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-3">
                     <Calendar className="h-5 w-5 text-gray-400" />
                     <div>
@@ -171,7 +209,7 @@ export default function AppointmentViewPage() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-3">
                     <Clock className="h-5 w-5 text-gray-400" />
                     <div>
@@ -180,7 +218,7 @@ export default function AppointmentViewPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center space-x-3">
                     <FileText className="h-5 w-5 text-gray-400" />
@@ -189,22 +227,21 @@ export default function AppointmentViewPage() {
                       <p className="text-sm text-gray-900 capitalize">{appointment.appointmentType}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-3">
                     <AlertCircle className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm font-medium text-gray-500">Status</p>
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                         appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        appointment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                          appointment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                        }`}>
                         {appointment.status}
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-3">
                     <MapPin className="h-5 w-5 text-gray-400" />
                     <div>
@@ -271,6 +308,50 @@ export default function AppointmentViewPage() {
                     <p className="text-sm text-gray-900">{appointment.treatment}</p>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Treatment Plan Context */}
+          {treatmentPlan && (
+            <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
+              <div className="px-6 py-4 border-b border-blue-200 bg-blue-100/50 flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  <Pill className="h-5 w-5 text-blue-600" />
+                  <h2 className="text-lg font-semibold text-blue-900">Linked clinical Plan</h2>
+                </div>
+                <Link
+                  href={`/patients/${appointment.patientId}?tab=treatment-plan`}
+                  className="text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center"
+                >
+                  View Plan <ArrowLeft className="h-3 w-3 ml-1 rotate-180" />
+                </Link>
+              </div>
+              <div className="p-6 bg-white">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-md font-bold text-gray-900">{treatmentPlan.title}</h3>
+                    {treatmentPlan.toothNumber && (
+                      <p className="text-xs text-gray-500 mt-0.5">Tooth #{treatmentPlan.toothNumber}</p>
+                    )}
+                    {planStage && (
+                      <div className="mt-3 flex items-center space-x-2">
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-tight">Current Stage:</span>
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold">
+                          {planStage.name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-gray-400 uppercase">Plan Status</div>
+                      <div className={`text-sm font-bold ${treatmentPlan.status === 'ACTIVE' ? 'text-green-600' : 'text-gray-600'}`}>
+                        {treatmentPlan.status}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

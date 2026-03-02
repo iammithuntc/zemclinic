@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { 
-  Users, 
-  ArrowLeft, 
-  Save, 
+import {
+  Users,
+  ArrowLeft,
+  Save,
   Plus,
   Phone,
   Mail,
@@ -17,6 +17,7 @@ import {
 import ProtectedRoute from '../../protected-route';
 import SidebarLayout from '../../components/sidebar-layout';
 import { useTranslations } from '../../hooks/useTranslations';
+import SearchableDoctorSelect from '../../components/SearchableDoctorSelect';
 
 export default function NewPatientPage() {
   const { t } = useTranslations();
@@ -31,22 +32,26 @@ export default function NewPatientPage() {
     city: '',
     state: '',
     zipCode: '',
-    
+
     // User Login Information
     email: '',
     password: '',
-    
+
     // Medical Information
     bloodType: '',
     allergies: '',
     medications: '',
     medicalHistory: '',
     familyHistory: '',
-    
+
     // Emergency Contact
     emergencyName: '',
     emergencyPhone: '',
-    emergencyRelationship: ''
+    emergencyRelationship: '',
+
+    // Assigned Doctor
+    assignedDoctor: '',
+    assignedDoctorId: ''
   });
 
   const [activeSection, setActiveSection] = useState('personal');
@@ -64,26 +69,26 @@ export default function NewPatientPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     // Validate required fields: name, email, birthdate, phone, and gender
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.dateOfBirth || !formData.phone || !formData.gender) {
       alert(t('patients.newPatient.validation.requiredFields'));
       setIsSubmitting(false);
       return;
     }
-    
+
     // If password is provided, validate it
     if (formData.password && formData.password.length < 6) {
       alert('Password must be at least 6 characters long');
       setIsSubmitting(false);
       return;
     }
-    
+
     try {
       // Prepare the data for the API
       const addressParts = [formData.address, formData.city, formData.state, formData.zipCode].filter(Boolean);
       const addressString = addressParts.length > 0 ? addressParts.join(', ') : undefined;
-      
+
       const patientData: any = {
         name: `${formData.firstName} ${formData.lastName}`,
         email: formData.email,
@@ -94,7 +99,7 @@ export default function NewPatientPage() {
         allergies: formData.allergies ? [formData.allergies] : [],
         currentMedications: formData.medications ? [formData.medications] : [],
       };
-      
+
       // Add password if provided (for patient login)
       if (formData.password) {
         patientData.password = formData.password;
@@ -116,6 +121,13 @@ export default function NewPatientPage() {
       }
       if (formData.bloodType && formData.bloodType !== '' && formData.bloodType !== 'none') {
         patientData.bloodType = formData.bloodType;
+      }
+
+      if (formData.assignedDoctor) {
+        patientData.assignedDoctor = formData.assignedDoctor;
+      }
+      if (formData.assignedDoctorId) {
+        patientData.assignedDoctorId = formData.assignedDoctorId;
       }
 
       // Debug: Log the data being sent
@@ -152,7 +164,9 @@ export default function NewPatientPage() {
           familyHistory: '',
           emergencyName: '',
           emergencyPhone: '',
-          emergencyRelationship: ''
+          emergencyRelationship: '',
+          assignedDoctor: '',
+          assignedDoctorId: ''
         });
         setActiveSection('personal');
         // Redirect to patients list
@@ -191,7 +205,7 @@ export default function NewPatientPage() {
 
   return (
     <ProtectedRoute>
-      <SidebarLayout 
+      <SidebarLayout
         title={t('patients.newPatient.title')}
         description={t('patients.newPatient.description')}
       >
@@ -218,11 +232,10 @@ export default function NewPatientPage() {
                   key={section.id}
                   type="button"
                   onClick={() => setActiveSection(section.id)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeSection === section.id
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeSection === section.id
+                    ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
                 >
                   <section.icon className="h-4 w-4" />
                   <span>{section.label}</span>
@@ -426,7 +439,7 @@ export default function NewPatientPage() {
                     />
                   </div>
                   <p className="mt-1 text-xs text-gray-500">
-                    {formData.password 
+                    {formData.password
                       ? 'Password must be at least 6 characters. A user account will be created for this patient.'
                       : 'Optional: Set a password to create a user account for patient portal access'
                     }
@@ -523,6 +536,22 @@ export default function NewPatientPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
+                <div className="md:col-span-2 pt-4 border-t border-gray-100">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {t('patients.assignedDoctor') || 'Assigned Doctor'}
+                  </label>
+                  <SearchableDoctorSelect
+                    value={formData.assignedDoctor}
+                    onChange={(doctor) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        assignedDoctor: doctor?.name || '',
+                        assignedDoctorId: doctor?._id || ''
+                      }));
+                    }}
+                    placeholder={t('patients.searchAndSelectDoctor') || 'Search and select a doctor...'}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -589,11 +618,10 @@ export default function NewPatientPage() {
                   key={section.id}
                   type="button"
                   onClick={() => setActiveSection(section.id)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    activeSection === section.id
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-700 hover:text-gray-900'
-                  }`}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeSection === section.id
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:text-gray-900'
+                    }`}
                 >
                   {index + 1}. {section.label}
                 </button>

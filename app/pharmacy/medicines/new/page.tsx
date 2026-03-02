@@ -170,7 +170,7 @@ export default function NewMedicinePage() {
             <div className="bg-white rounded-lg p-6">
               <h3 className="text-lg font-semibold mb-4">{t('pharmacy.additionalInfo')}</h3>
               <div className="space-y-4">
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">{t('pharmacy.description')}</label>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">{t('pharmacy.descriptionLabel')}</label>
                   <textarea rows={2} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" /></div>
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">{t('pharmacy.composition')}</label>
