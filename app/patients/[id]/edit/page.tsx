@@ -39,6 +39,9 @@ export default function PatientEditPage() {
     assignedDoctor: '',
     assignedDoctorId: '',
     medicalHistory: '',
+    allergies: '',
+    currentMedications: '',
+    familyHistory: '',
     emergencyContact: {
       name: '',
       relationship: '',
@@ -62,7 +65,10 @@ export default function PatientEditPage() {
             bloodType: data.bloodType || '',
             assignedDoctor: data.assignedDoctor || '',
             assignedDoctorId: data.assignedDoctorId?._id || data.assignedDoctorId || '',
-            medicalHistory: data.medicalHistory || '',
+            medicalHistory: (data.medicalHistory && Array.isArray(data.medicalHistory)) ? data.medicalHistory[0] : (data.medicalHistory || ''),
+            allergies: (data.allergies && Array.isArray(data.allergies)) ? data.allergies[0] : (data.allergies || ''),
+            currentMedications: (data.currentMedications && Array.isArray(data.currentMedications)) ? data.currentMedications[0] : (data.currentMedications || ''),
+            familyHistory: (data.familyHistory && Array.isArray(data.familyHistory)) ? data.familyHistory[0] : (data.familyHistory || ''),
             emergencyContact: {
               name: data.emergencyContact?.name || '',
               relationship: data.emergencyContact?.relationship || '',
@@ -118,7 +124,13 @@ export default function PatientEditPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          medicalHistory: formData.medicalHistory ? [formData.medicalHistory] : [],
+          allergies: formData.allergies ? [formData.allergies] : [],
+          currentMedications: formData.currentMedications ? [formData.currentMedications] : [],
+          familyHistory: formData.familyHistory ? [formData.familyHistory] : []
+        }),
       });
 
       if (response.ok) {
@@ -404,6 +416,51 @@ export default function PatientEditPage() {
                     rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter any relevant medical history..."
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="allergies" className="block text-sm font-medium text-gray-700 mb-2">
+                    Allergies
+                  </label>
+                  <input
+                    type="text"
+                    id="allergies"
+                    name="allergies"
+                    value={formData.allergies}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="List any known allergies..."
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="currentMedications" className="block text-sm font-medium text-gray-700 mb-2">
+                    Current Medications
+                  </label>
+                  <textarea
+                    id="currentMedications"
+                    name="currentMedications"
+                    value={formData.currentMedications}
+                    onChange={handleInputChange}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="List current medications..."
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="familyHistory" className="block text-sm font-medium text-gray-700 mb-2">
+                    Family History
+                  </label>
+                  <textarea
+                    id="familyHistory"
+                    name="familyHistory"
+                    value={formData.familyHistory}
+                    onChange={handleInputChange}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="List relevant family medical history..."
                   />
                 </div>
               </div>

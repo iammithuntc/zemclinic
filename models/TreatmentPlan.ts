@@ -7,7 +7,9 @@ export interface ITreatmentPlan extends Document {
     treatmentArea?: string;
     status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
     startDate: Date;
+    approxDuration?: number;
     approxEndDate?: Date;
+    totalBudget?: number;
     description?: string;
     documents?: {
         name: string;
@@ -58,8 +60,15 @@ const TreatmentPlanSchema: Schema = new Schema(
             type: Date,
             default: Date.now,
         },
+        approxDuration: {
+            type: Number,
+        },
         approxEndDate: {
             type: Date,
+        },
+        totalBudget: {
+            type: Number,
+            default: 0,
         },
         description: {
             type: String,

@@ -98,6 +98,7 @@ export default function NewPatientPage() {
         medicalHistory: formData.medicalHistory ? [formData.medicalHistory] : [],
         allergies: formData.allergies ? [formData.allergies] : [],
         currentMedications: formData.medications ? [formData.medications] : [],
+        familyHistory: formData.familyHistory ? [formData.familyHistory] : [],
       };
 
       // Add password if provided (for patient login)

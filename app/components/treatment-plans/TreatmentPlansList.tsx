@@ -14,12 +14,15 @@ import {
     Save,
     FileText,
     Upload,
-    X as LucideX
+    X as LucideX,
+    TrendingUp,
+    DollarSign
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import SearchableDoctorSelect from '../SearchableDoctorSelect';
-
-
+import { useSettings } from '../../contexts/SettingsContext';
 
 interface PopulatedDoctor {
     _id: string;
@@ -41,6 +44,7 @@ interface PlanStage {
     encounters?: string[];
     doctorId?: string | PopulatedDoctor;
     doctorName?: string;
+    budget?: number;
 }
 
 interface TreatmentPlan {
@@ -56,7 +60,9 @@ interface TreatmentPlan {
     treatmentArea?: string;
     status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
     startDate: string;
+    approxDuration?: number;
     approxEndDate?: string;
+    totalBudget?: number;
     progress?: number;
     primaryDoctorId?: string | PopulatedDoctor;
     history?: {
@@ -74,30 +80,25 @@ interface TreatmentPlansListProps {
 }
 
 export default function TreatmentPlansList({ patientId }: TreatmentPlansListProps) {
+    const { data: session } = useSession();
+    const router = useRouter();
+    const { settings } = useSettings();
+    const currencySymbol = settings?.currency === 'INR' ? '₹' : (settings?.currency === 'USD' ? '$' : settings?.currency || '$');
+
     const [plans, setPlans] = useState<TreatmentPlan[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showCreateModal, setShowCreateModal] = useState(false);
-    const [editingPlan, setEditingPlan] = useState<TreatmentPlan | null>(null);
-    const [selectedPlanForView, setSelectedPlanForView] = useState<TreatmentPlan | null>(null);
     const [selectedStageForView, setSelectedStageForView] = useState<PlanStage | null>(null);
     const [showStageMenu, setShowStageMenu] = useState<string | null>(null);
 
-    // Form states for Create/Edit
-    const [formData, setFormData] = useState({
-        title: '',
-        description: '',
-        treatmentArea: '',
-        primaryDoctorId: '',
-        primaryDoctorName: '',
-        startDate: new Date().toISOString().split('T')[0],
-        approxEndDate: '',
-        documents: [] as { name: string; url: string; stageId?: string }[],
-        stages: [{ name: 'Initial Consultation', shortDescription: '', doctorId: '', doctorName: '' }]
-    });
+    // Template states
+    const [showTemplateModal, setShowTemplateModal] = useState(false);
+    const [templates, setTemplates] = useState<any[]>([]);
+    const [loadingTemplates, setLoadingTemplates] = useState(false);
 
     useEffect(() => {
         fetchPlans();
     }, [patientId]);
+
 
     const fetchPlans = async () => {
         try {
@@ -129,130 +130,32 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
     };
 
     const handleCreateOpen = () => {
-        setFormData({
-            title: '',
-            description: '',
-            treatmentArea: '',
-            primaryDoctorId: '',
-            primaryDoctorName: '',
-            startDate: new Date().toISOString().split('T')[0],
-            approxEndDate: '',
-            documents: [],
-            stages: [{ name: 'Initial Consultation', shortDescription: '', doctorId: '', doctorName: '' }]
-        });
-        setShowCreateModal(true);
+        router.push(`/patients/${patientId}/treatment-plans/new`);
     };
 
     const handleEditOpen = (plan: TreatmentPlan) => {
-        const primDoc = plan.primaryDoctorId;
-        const primDocId = typeof primDoc === 'object' && primDoc ? primDoc._id : (primDoc || '');
-        const primDocName = typeof primDoc === 'object' && primDoc ? primDoc.name : '';
-
-        setFormData({
-            title: plan.title,
-            description: plan.description || '',
-            treatmentArea: plan.treatmentArea || '',
-            primaryDoctorId: primDocId,
-            primaryDoctorName: primDocName,
-            startDate: plan.startDate ? new Date(plan.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-            approxEndDate: plan.approxEndDate ? new Date(plan.approxEndDate).toISOString().split('T')[0] : '',
-            documents: plan.documents?.map(doc => ({ name: doc.name, url: doc.url, stageId: doc.stageId })) || [],
-            stages: (plan.stages || []).map(s => {
-                const doc = s.doctorId;
-                return {
-                    name: s.name,
-                    shortDescription: s.shortDescription || '',
-                    doctorId: typeof doc === 'object' && doc ? doc._id : (doc || ''),
-                    doctorName: typeof doc === 'object' && doc ? doc.name : (s.doctorName || '')
-                };
-            })
-        });
-        setEditingPlan(plan);
-        setShowCreateModal(true);
+        router.push(`/patients/${patientId}/treatment-plans/${plan._id}/edit`);
     };
 
-    const deleteStage = async (plan: TreatmentPlan, stageId: string) => {
-        if (!confirm('Are you sure you want to delete this clinical stage?')) return;
-
+    const handleCreateFromTemplate = async () => {
+        setLoadingTemplates(true);
+        setShowTemplateModal(true);
         try {
-            const updatedStages = plan.stages?.filter(s => s._id !== stageId) || [];
-
-            const historyEntry = {
-                action: 'STAGE_DELETED',
-                userName: 'Medical Staff',
-                timestamp: new Date().toISOString(),
-                details: `Deleted stage: ${plan.stages?.find(s => s._id === stageId)?.name}`
-            };
-
-            const response = await fetch(`/api/treatment-plans/${plan._id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    stages: updatedStages,
-                    history: [...(plan.history || []), historyEntry]
-                })
-            });
-
-            if (response.ok) {
-                fetchPlans();
-                setShowStageMenu(null);
+            const res = await fetch('/api/treatment-plan-templates');
+            if (res.ok) {
+                const data = await res.json();
+                setTemplates(data.templates);
             }
         } catch (error) {
-            console.error('Error deleting stage:', error);
-            alert('Failed to delete stage');
+            console.error('Error fetching templates:', error);
+        } finally {
+            setLoadingTemplates(false);
         }
     };
 
-    const savePlan = async (isEdit: boolean) => {
-        const url = isEdit ? `/api/treatment-plans/${editingPlan?._id}` : '/api/treatment-plans';
-        const method = isEdit ? 'PUT' : 'POST';
-
-        if (!formData.title) {
-            alert('Please enter a plan title');
-            return;
-        }
-
-        const payload = {
-            ...formData,
-            patientId,
-            status: editingPlan ? editingPlan.status : 'ACTIVE',
-            history: editingPlan ? [
-                ...(editingPlan.history || []),
-                {
-                    action: 'PLAN_UPDATED',
-                    userName: 'Medical Staff',
-                    timestamp: new Date().toISOString(),
-                    details: 'Treatment plan details updated'
-                }
-            ] : [
-                {
-                    action: 'PLAN_CREATED',
-                    userName: 'Medical Staff',
-                    timestamp: new Date().toISOString(),
-                    details: 'New treatment plan initiated'
-                }
-            ]
-        };
-
-        try {
-            const response = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (response.ok) {
-                setShowCreateModal(false);
-                setEditingPlan(null);
-                fetchPlans();
-            } else {
-                const err = await response.json();
-                alert(`Error: ${err.error || 'Failed to save plan'}`);
-            }
-        } catch (error) {
-            console.error('Error saving plan:', error);
-            alert('Failed to save treatment plan');
-        }
+    const handleSelectTemplate = (template: any) => {
+        // Redirect to new page with template ID as query param
+        router.push(`/patients/${patientId}/treatment-plans/new?templateId=${template._id}`);
     };
 
     const getStatusIcon = (status: string) => {
@@ -273,6 +176,14 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
         return stage.doctorName || '-';
     };
 
+    const isAuthorizedForBudget = (plan: TreatmentPlan | null) => {
+        if (!session?.user || !plan) return false;
+        if (session.user.role === 'admin') return true;
+
+        const primDocId = typeof plan.primaryDoctorId === 'object' ? plan.primaryDoctorId?._id : plan.primaryDoctorId;
+        return primDocId === session.user.id;
+    };
+
     if (loading) {
         return (
             <div className="flex justify-center py-8">
@@ -285,19 +196,28 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold text-gray-900">Structured Treatment Plans</h3>
-                <button
-                    onClick={handleCreateOpen}
-                    className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-                >
-                    <Plus className="h-4 w-4 mr-1" />
-                    New clinical Plan
-                </button>
+                <div className="flex space-x-3">
+                    <button
+                        onClick={handleCreateFromTemplate}
+                        className="inline-flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-50 transition-all shadow-sm"
+                    >
+                        <FileText className="h-4 w-4 mr-2 text-blue-500" />
+                        Create from Template
+                    </button>
+                    <button
+                        onClick={handleCreateOpen}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
+                    >
+                        <Plus className="h-4 w-4 mr-2" />
+                        New Treatment Plan
+                    </button>
+                </div>
             </div>
 
             {plans.length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
                     <Pill className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No clinical plans found</h3>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No treatment plans found</h3>
                     <p className="mt-1 text-sm text-gray-500">Create a treatment plan to track multi-visit procedures.</p>
                 </div>
             ) : (
@@ -312,7 +232,7 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
                                         </div>
                                         <div className="flex flex-col">
                                             <button
-                                                onClick={() => setSelectedPlanForView(plan)}
+                                                onClick={() => router.push(`/patients/${patientId}/treatment-plans/${plan._id}`)}
                                                 className="text-left font-bold text-gray-900 hover:text-blue-600 transition-colors"
                                             >
                                                 {plan.title}
@@ -321,7 +241,7 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
                                                 {plan.primaryDoctorId && (
                                                     <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded flex items-center">
                                                         <CheckCircle2 className="h-3 w-3 mr-1" />
-                                                        {(plan.primaryDoctorId as PopulatedDoctor).name}
+                                                        {(plan.primaryDoctorId as PopulatedDoctor).name || 'Unassigned'}
                                                     </span>
                                                 )}
                                                 {plan.treatmentArea && (
@@ -341,6 +261,12 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
                                                         End: {new Date(plan.approxEndDate).toLocaleDateString()}
                                                     </span>
                                                 )}
+                                                {isAuthorizedForBudget(plan) && plan.totalBudget ? (
+                                                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded flex items-center">
+                                                        <DollarSign className="h-3 w-3 mr-1" />
+                                                        Budget: {currencySymbol}{plan.totalBudget.toLocaleString()}
+                                                    </span>
+                                                ) : null}
                                             </div>
                                         </div>
                                     </div>
@@ -411,12 +337,12 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
                                                     </td>
                                                     <td className="px-6 py-3 whitespace-nowrap text-right text-xs font-medium">
                                                         <div className="flex items-center justify-end space-x-2">
-                                                            {stage.encounterId && (
+                                                            {(stage.encounters && stage.encounters.length > 0) || stage.encounterId ? (
                                                                 <span className="text-[10px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded flex items-center mr-2">
                                                                     <FileText className="h-3 w-3 mr-0.5" />
-                                                                    ENC-{stage.encounterId.toString().slice(-4).toUpperCase()}
+                                                                    Notes
                                                                 </span>
-                                                            )}
+                                                            ) : null}
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
@@ -450,12 +376,6 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
                                                                         <Calendar className="h-3 w-3 mr-2" /> Schedule
                                                                     </Link>
                                                                 )}
-                                                                <button
-                                                                    onClick={() => deleteStage(plan, stage._id)}
-                                                                    className="w-full px-4 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center border-t border-gray-50 mt-1"
-                                                                >
-                                                                    <LucideX className="h-3 w-3 mr-2" /> Delete
-                                                                </button>
                                                             </div>
                                                         )}
                                                     </td>
@@ -470,507 +390,107 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
                 </div>
             )}
 
-            {/* Combined Modal for Create/Edit */}
-            {(showCreateModal || editingPlan) && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-[100] p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl animate-in fade-in zoom-in duration-200 overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                            <div>
-                                <h3 className="text-xl font-bold text-gray-900">{editingPlan ? 'Edit clinical Plan' : 'Create clinical Plan'}</h3>
-                                <p className="text-xs text-gray-500 mt-1">Define procedures, assign doctors, and attach documents</p>
+            {/* Stage Detail Modal */}
+            {selectedStageForView && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-[120] p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden">
+                        <div className="p-6 border-b flex justify-between items-center">
+                            <h3 className="text-lg font-bold">{selectedStageForView.name}</h3>
+                            <button onClick={() => setSelectedStageForView(null)}><LucideX className="h-6 w-6 text-gray-400" /></button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 bg-gray-50 rounded-lg"><p className="text-[10px] font-bold text-gray-400 uppercase">Status</p><p className="text-sm font-bold">{selectedStageForView.status}</p></div>
+                                <div className="p-4 bg-gray-50 rounded-lg"><p className="text-[10px] font-bold text-gray-400 uppercase">Doctor</p><p className="text-sm font-bold">{getDoctorName(selectedStageForView)}</p></div>
                             </div>
-                            <button onClick={() => { setShowCreateModal(false); setEditingPlan(null); }} className="text-gray-400 hover:text-gray-600 p-1">
-                                <LucideX className="h-6 w-6" />
+                            {selectedStageForView.shortDescription && <div className="p-4 bg-blue-50 text-blue-800 text-xs rounded-lg italic">"{selectedStageForView.shortDescription}"</div>}
+                            <div className="space-y-2">
+                                <h4 className="text-xs font-bold uppercase text-gray-400">Linked Clinical Data</h4>
+                                {selectedStageForView.appointmentId ? (
+                                    <Link href={`/appointments/${selectedStageForView.appointmentId}`} className="block p-3 bg-white border rounded text-xs hover:bg-gray-50 transition-colors">Appointment: {selectedStageForView.appointmentId.slice(-6).toUpperCase()}</Link>
+                                ) : <p className="text-xs text-gray-400 italic">No linked appointments.</p>}
+                            </div>
+                        </div>
+                        <div className="p-4 bg-gray-50 border-t flex justify-end">
+                            <button onClick={() => setSelectedStageForView(null)} className="px-4 py-2 text-sm font-bold bg-white border rounded-lg">Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Template Selection Modal */}
+            {showTemplateModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-[130] p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+                        <div className="p-6 border-b flex justify-between items-center bg-gray-50">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900">Select a Template</h3>
+                                <p className="text-xs text-gray-500 mt-1">Quickly initiate a plan using a predefined clinical workflow</p>
+                            </div>
+                            <button onClick={() => setShowTemplateModal(false)} className="p-2 hover:bg-white rounded-full transition-colors">
+                                <LucideX className="h-6 w-6 text-gray-500" />
                             </button>
                         </div>
-
-                        <div className="p-6 overflow-y-auto space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Plan Title *</label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. Root Canal Treatment"
-                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-bold"
-                                            value={formData.title}
-                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Treatment Area (Optional)</label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. Upper Left Molar"
-                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
-                                            value={formData.treatmentArea}
-                                            onChange={(e) => setFormData({ ...formData, treatmentArea: e.target.value })}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Primary Doctor (In-Charge)</label>
-                                        <SearchableDoctorSelect
-                                            value={formData.primaryDoctorName}
-                                            onChange={(doc) => setFormData({
-                                                ...formData,
-                                                primaryDoctorId: doc?._id || '',
-                                                primaryDoctorName: doc?.name || ''
-                                            })}
-                                            placeholder="Assign In-Charge Doctor"
-                                            className="w-full"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3 mt-4">
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Start Date *</label>
-                                            <div className="relative">
-                                                <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                                <input
-                                                    type="date"
-                                                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
-                                                    value={formData.startDate}
-                                                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Approx. End Date</label>
-                                            <div className="relative">
-                                                <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                                <input
-                                                    type="date"
-                                                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
-                                                    value={formData.approxEndDate}
-                                                    onChange={(e) => setFormData({ ...formData, approxEndDate: e.target.value })}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {loadingTemplates ? (
+                                <div className="flex justify-center py-12">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Clinical Documents (Tagged by Stage)</label>
-                                    <div
-                                        onClick={() => {
-                                            const name = prompt('Enter document name:');
-                                            if (name) {
-                                                const stageId = prompt('Optional: Enter Stage Index (1, 2, ...) to tag this document:') || undefined;
-                                                setFormData({
-                                                    ...formData,
-                                                    documents: [...formData.documents, { name, url: '#', stageId: stageId ? formData.stages[parseInt(stageId) - 1]?.name : undefined }]
-                                                });
-                                            }
-                                        }}
-                                        className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
-                                    >
-                                        <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                                        <span className="text-xs font-medium text-gray-500">Click to upload clinical files</span>
-                                        <span className="text-[10px] text-gray-400 mt-1">X-rays, Scans, or Reports</span>
+                            ) : templates.length === 0 ? (
+                                <div className="text-center py-20 px-4 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-100">
+                                    <div className="bg-white p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                        <FileText className="h-8 w-8 text-blue-400 opacity-50" />
                                     </div>
-                                    {formData.documents.length > 0 && (
-                                        <div className="mt-3 space-y-2">
-                                            {formData.documents.map((doc, i) => (
-                                                <div key={i} className="flex items-center justify-between bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-xs font-medium border border-blue-100">
-                                                    <div className="flex items-center">
-                                                        <FileText className="h-3.5 w-3.5 mr-2 text-blue-500" />
-                                                        <span>{doc.name}</span>
-                                                        {doc.stageId && (
-                                                            <span className="ml-2 px-1.5 py-0.5 bg-blue-600 text-white rounded text-[9px] font-bold uppercase tracking-wider">
-                                                                {doc.stageId}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const nd = [...formData.documents];
-                                                            nd.splice(i, 1);
-                                                            setFormData({ ...formData, documents: nd });
-                                                        }}
-                                                        className="text-blue-400 hover:text-red-500 transition-colors"
-                                                    >
-                                                        <LucideX className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                                    <h4 className="text-gray-900 font-bold text-lg">No clinical templates found</h4>
+                                    <p className="text-gray-500 text-sm mt-2 max-w-sm mx-auto">Templates help you quickly replicate complex treatment workflows across different patients.</p>
 
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Description</label>
-                                <textarea
-                                    placeholder="Enter the full goal and clinical notes for this treatment plan..."
-                                    rows={3}
-                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm resize-none"
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                />
-                            </div>
-
-                            <div>
-                                <div className="flex justify-between items-center mb-4">
-                                    <label className="block text-xs font-bold text-gray-500 uppercase">Treatment Stages & Doctor Assignments</label>
-                                    <button
-                                        onClick={() => {
-                                            setFormData({
-                                                ...formData,
-                                                stages: [...formData.stages, { name: '', shortDescription: '', doctorId: '', doctorName: '' }]
-                                            });
-                                        }}
-                                        className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center"
-                                    >
-                                        <Plus className="h-3 w-3 mr-1" /> Add Stage
-                                    </button>
+                                    <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+                                        {session?.user?.role === 'admin' && (
+                                            <button
+                                                onClick={handleCreateOpen}
+                                                className="px-6 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center"
+                                            >
+                                                <Plus className="h-4 w-4 mr-2" />
+                                                Create Your First Template
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={handleCreateOpen}
+                                            className="px-6 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-50 transition-all shadow-sm"
+                                        >
+                                            Start Blank Plan
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 mt-6 italic">Admins can save any active plan as a template directly from the creation form.</p>
                                 </div>
-                                <div className="space-y-3">
-                                    {formData.stages.map((stage, idx) => (
-                                        <div key={idx} className="flex flex-col space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                            <div className="grid grid-cols-12 gap-3 items-center">
-                                                <div className="col-span-1 flex items-center justify-center font-bold text-gray-400">
-                                                    {idx + 1}
+                            ) : (
+                                <div className="grid grid-cols-1 gap-4">
+                                    {templates.map((template) => (
+                                        <div
+                                            key={template._id}
+                                            onClick={() => handleSelectTemplate(template)}
+                                            className="p-4 border border-gray-100 bg-gray-50 rounded-xl hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer transition-all group"
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors">{template.name}</h4>
+                                                    <p className="text-xs text-gray-500 mt-1">{template.description || 'No description provided.'}</p>
                                                 </div>
-                                                <div className="col-span-10 grid grid-cols-2 gap-3">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Stage name (e.g. Access & Cleaning)"
-                                                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                                                        value={stage.name}
-                                                        onChange={(e) => {
-                                                            const newStages = [...formData.stages];
-                                                            newStages[idx].name = e.target.value;
-                                                            setFormData({ ...formData, stages: newStages });
-                                                        }}
-                                                    />
-                                                    <SearchableDoctorSelect
-                                                        value={stage.doctorName}
-                                                        onChange={(doc) => {
-                                                            const newStages = [...formData.stages];
-                                                            newStages[idx].doctorId = doc?._id || '';
-                                                            newStages[idx].doctorName = doc?.name || '';
-                                                            setFormData({ ...formData, stages: newStages });
-                                                        }}
-                                                        placeholder="Assign Doctor (Optional)"
-                                                        className="w-full text-xs"
-                                                    />
-                                                </div>
-                                                <div className="col-span-1 flex justify-end">
-                                                    <button
-                                                        onClick={() => {
-                                                            const newStages = formData.stages.filter((_, i) => i !== idx);
-                                                            setFormData({ ...formData, stages: newStages });
-                                                        }}
-                                                        className="p-2 text-red-500 hover:text-red-600"
-                                                    >
-                                                        <LucideX className="h-4 w-4" />
-                                                    </button>
+                                                <div className="text-right">
+                                                    <span className="text-[10px] font-bold bg-white text-blue-600 px-2 py-1 rounded border shadow-sm uppercase px-2">{template.stages.length} Stages</span>
                                                 </div>
                                             </div>
-                                            <div className="pl-10">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Short instruction for this stage (Optional)"
-                                                    className="w-full px-3 py-1.5 bg-white/50 border border-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-[11px]"
-                                                    value={stage.shortDescription}
-                                                    onChange={(e) => {
-                                                        const newStages = [...formData.stages];
-                                                        newStages[idx].shortDescription = e.target.value;
-                                                        setFormData({ ...formData, stages: newStages });
-                                                    }}
-                                                />
+                                            <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-gray-400">
+                                                {template.treatmentArea && <span className="flex items-center"><TrendingUp className="h-3 w-3 mr-1" />{template.treatmentArea}</span>}
+                                                <span className="flex items-center"><DollarSign className="h-3 w-3 mr-1" />{currencySymbol}{template.stages.reduce((sum: number, s: any) => sum + (s.budget || 0), 0).toLocaleString()}</span>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
+                            )}
                         </div>
-
-                        <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                            {editingPlan && (
-                                <button
-                                    onClick={async () => {
-                                        if (confirm('Are you sure you want to delete this plan? This will also remove all its stages.')) {
-                                            const res = await fetch(`/api/treatment-plans/${editingPlan._id}`, { method: 'DELETE' });
-                                            if (res.ok) {
-                                                setEditingPlan(null);
-                                                fetchPlans();
-                                            }
-                                        }
-                                    }}
-                                    className="text-xs font-bold text-red-500 hover:underline"
-                                >
-                                    Delete clinical Plan
-                                </button>
-                            ) || <div></div>}
-
-                            <div className="flex space-x-3">
-                                <button
-                                    onClick={() => { setShowCreateModal(false); setEditingPlan(null); }}
-                                    className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => savePlan(!!editingPlan)}
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center"
-                                >
-                                    <Save className="h-4 w-4 mr-2" />
-                                    {editingPlan ? 'Update Plan' : 'Create Plan'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Treatment Plan Detail View Modal */}
-            {selectedPlanForView && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-[110] p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl animate-in fade-in zoom-in duration-200 overflow-hidden flex flex-col max-h-[95vh]">
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                            <div className="flex items-center space-x-4">
-                                <div className="p-3 bg-blue-600 rounded-xl">
-                                    <Pill className="h-6 w-6 text-white" />
-                                </div>
-                                <div>
-                                    <h3 className="text-2xl font-bold text-gray-900">{selectedPlanForView.title}</h3>
-                                    <p className="text-sm text-gray-500">Plan initiated on {new Date(selectedPlanForView.startDate).toLocaleDateString()}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center space-x-6">
-                                <button onClick={() => { setSelectedPlanForView(null); handleEditOpen(selectedPlanForView); }} className="text-xs font-bold text-blue-600 hover:underline">
-                                    Edit Plan
-                                </button>
-                                <button onClick={() => setSelectedPlanForView(null)} className="text-gray-400 hover:text-gray-600 p-2 bg-white rounded-full shadow-sm">
-                                    <LucideX className="h-6 w-6" />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-6">
-                            <div className="grid grid-cols-12 gap-6">
-                                {/* Left Column: Info & Stages */}
-                                <div className="col-span-12 lg:col-span-8 space-y-6">
-                                    <div className="bg-blue-50/30 p-4 rounded-xl border border-blue-100/50">
-                                        <h4 className="text-xs font-bold text-blue-600 uppercase mb-2 tracking-wider">Plan Description & Timeline</h4>
-                                        <p className="text-sm text-gray-700 leading-relaxed font-medium">
-                                            {selectedPlanForView.description || "No description provided for this clinical plan."}
-                                        </p>
-                                        <div className="flex items-center space-x-4 mt-4 py-3 border-t border-blue-100">
-                                            <div className="flex items-center text-xs text-gray-600 font-bold">
-                                                <Clock className="h-4 w-4 mr-1.5 text-gray-400" />
-                                                Start: {new Date(selectedPlanForView.startDate).toLocaleDateString()}
-                                            </div>
-                                            {selectedPlanForView.approxEndDate && (
-                                                <div className="flex items-center text-xs text-blue-600 font-bold">
-                                                    <Calendar className="h-4 w-4 mr-1.5 text-blue-400" />
-                                                    Target Finish: {new Date(selectedPlanForView.approxEndDate).toLocaleDateString()}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                                            <ChevronRight className="h-5 w-5 mr-1 text-blue-600" />
-                                            Clinical Stages
-                                        </h4>
-                                        <div className="space-y-3">
-                                            {selectedPlanForView.stages?.map((stage, idx) => (
-                                                <div
-                                                    key={stage._id}
-                                                    onClick={() => setSelectedStageForView(stage)}
-                                                    className="flex items-center p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-blue-200 hover:shadow-md transition-all cursor-pointer group"
-                                                >
-                                                    <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-gray-500 mr-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                                        {idx + 1}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <h5 className="font-bold text-gray-900">{stage.name}</h5>
-                                                        <p className="text-xs text-gray-500">{stage.shortDescription || "No notes"}</p>
-                                                    </div>
-                                                    <div className="flex items-center space-x-4">
-                                                        <div className="flex flex-col items-end">
-                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${stage.status === 'DONE' ? 'bg-green-100 text-green-700' :
-                                                                stage.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
-                                                                    'bg-gray-100 text-gray-700'
-                                                                }`}>
-                                                                {stage.status}
-                                                            </span>
-                                                            <span className="text-[10px] text-gray-400 mt-1">{getDoctorName(stage)}</span>
-                                                        </div>
-                                                        <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-blue-600 transition-colors" />
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Right Column: History & Stats */}
-                                <div className="col-span-12 lg:col-span-4 space-y-6">
-                                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                                        <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center">
-                                            <FileText className="h-4 w-4 mr-2 text-blue-500" />
-                                            Clinical Documents
-                                        </h4>
-                                        <div className="space-y-2">
-                                            {selectedPlanForView.documents?.length ? (
-                                                selectedPlanForView.documents.map((doc, i) => (
-                                                    <div key={i} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-100 group hover:border-blue-200 transition-all">
-                                                        <div className="flex items-center min-w-0">
-                                                            <div className="p-1.5 bg-white rounded border border-gray-200 mr-3">
-                                                                <FileText className="h-3.5 w-3.5 text-gray-400" />
-                                                            </div>
-                                                            <div className="flex flex-col min-w-0">
-                                                                <span className="text-xs font-bold text-gray-900 truncate">{doc.name}</span>
-                                                                {doc.stageId && (
-                                                                    <span className="text-[9px] font-bold text-blue-600 uppercase tracking-tighter mt-0.5">
-                                                                        Stage: {doc.stageId}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="p-1 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <ExternalLink className="h-3.5 w-3.5" />
-                                                        </a>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="py-4 text-center border-2 border-dashed border-gray-100 rounded-xl">
-                                                    <p className="text-[10px] text-gray-400 italic">No documents attached.</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                                        <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center">
-                                            <Clock className="h-4 w-4 mr-2 text-gray-400" />
-                                            Audit History
-                                        </h4>
-                                        <div className="space-y-4">
-                                            {selectedPlanForView.history?.length ? (
-                                                selectedPlanForView.history.map((entry, i) => (
-                                                    <div key={i} className="relative pl-6 pb-4 last:pb-0">
-                                                        {i < selectedPlanForView.history!.length - 1 && (
-                                                            <div className="absolute left-1.5 top-1.5 bottom-0 w-0.5 bg-gray-200"></div>
-                                                        )}
-                                                        <div className="absolute left-0 top-1.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-white"></div>
-                                                        <p className="text-xs font-bold text-gray-900">{entry.action.replace(/_/g, ' ')}</p>
-                                                        <p className="text-[10px] text-gray-500 mt-0.5">By {entry.userName} • {new Date(entry.timestamp).toLocaleString()}</p>
-                                                        {entry.details && <p className="text-[10px] text-gray-600 mt-1 italic">{entry.details}</p>}
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <p className="text-xs text-gray-500 text-center italic">No history recorded.</p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                                        <h4 className="text-sm font-bold text-gray-900 mb-4">Patient Info</h4>
-                                        <div className="flex items-center space-x-3 mb-4">
-                                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                                                <FileText className="h-5 w-5 text-gray-400" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-gray-900">Patient ID</p>
-                                                <p className="text-xs text-gray-500">{patientId}</p>
-                                            </div>
-                                        </div>
-                                        <div className="pt-4 border-t border-gray-50">
-                                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">In-Charge Doctor</p>
-                                            <p className="text-sm font-bold text-gray-900 mt-1">
-                                                {selectedPlanForView.primaryDoctorId ? (selectedPlanForView.primaryDoctorId as PopulatedDoctor).name : 'Unassigned'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Stage Detail View Modal */}
-            {selectedStageForView && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-[120] p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200 overflow-hidden">
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                            <div>
-                                <h3 className="text-xl font-bold text-gray-900">Stage: {selectedStageForView.name}</h3>
-                                <p className="text-xs text-gray-500 mt-1">Detailed activity and scheduling</p>
-                            </div>
-                            <button onClick={() => setSelectedStageForView(null)} className="text-gray-400 hover:text-gray-600">
-                                <LucideX className="h-6 w-6" />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 bg-gray-50 rounded-xl">
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase">Status</label>
-                                    <p className="text-sm font-bold text-gray-900 mt-1 lowercase first-letter:uppercase">{selectedStageForView.status.replace(/_/g, ' ')}</p>
-                                </div>
-                                <div className="p-4 bg-gray-50 rounded-xl">
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase">Assigned Doctor</label>
-                                    <p className="text-sm font-bold text-gray-900 mt-1">{getDoctorName(selectedStageForView)}</p>
-                                </div>
-                            </div>
-
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center">
-                                    <Calendar className="h-4 w-4 mr-2 text-blue-500" />
-                                    Linked Appointments & Encounters
-                                </h4>
-                                <div className="space-y-2">
-                                    {selectedStageForView.appointments?.length || selectedStageForView.appointmentId ? (
-                                        <ul className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
-                                            {/* Support both legacy single ID and new array */}
-                                            {(selectedStageForView.appointments || (selectedStageForView.appointmentId ? [selectedStageForView.appointmentId] : [])).map((appId: string, i: number) => (
-                                                <li key={i} className="p-3 bg-white hover:bg-gray-50 transition-colors flex justify-between items-center">
-                                                    <div className="flex items-center space-x-3">
-                                                        <Calendar className="h-4 w-4 text-gray-400" />
-                                                        <span className="text-xs font-medium text-gray-700">Appointment ID: {appId.toString().slice(-6).toUpperCase()}</span>
-                                                    </div>
-                                                    <Link
-                                                        href={`/appointments/${appId}`}
-                                                        className="text-[10px] font-bold text-blue-600 hover:underline"
-                                                    >
-                                                        Details
-                                                    </Link>
-                                                </li>
-                                            ))}
-                                            {(selectedStageForView.encounters || (selectedStageForView.encounterId ? [selectedStageForView.encounterId] : [])).map((encId: string, i: number) => (
-                                                <li key={i + 100} className="p-3 bg-indigo-50/30 hover:bg-indigo-50/50 transition-colors flex justify-between items-center">
-                                                    <div className="flex items-center space-x-3">
-                                                        <FileText className="h-4 w-4 text-indigo-400" />
-                                                        <span className="text-xs font-semibold text-indigo-700">Encounter (Notes): {encId.toString().slice(-6).toUpperCase()}</span>
-                                                    </div>
-                                                    <Link
-                                                        href={`/encounters/${encId}`}
-                                                        className="text-[10px] font-bold text-indigo-600 hover:underline"
-                                                    >
-                                                        Read Notes
-                                                    </Link>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <div className="text-center py-6 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                                            <p className="text-xs text-gray-400 font-medium">No appointments scheduled for this stage yet.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
-                            <button
-                                onClick={() => setSelectedStageForView(null)}
-                                className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all"
-                            >
-                                Close
-                            </button>
+                        <div className="p-4 border-t bg-gray-50 flex justify-between items-center text-xs text-gray-500">
+                            <span>Selected template will pre-fill the form</span>
+                            <button onClick={() => setShowTemplateModal(false)} className="px-4 py-2 font-bold text-gray-900 hover:bg-white rounded-lg transition-colors">Close</button>
                         </div>
                     </div>
                 </div>

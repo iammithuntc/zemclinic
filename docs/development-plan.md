@@ -36,4 +36,78 @@
 ## Phase 5: Verification & Cleanup
 - **Type Safety**: Resolution of `any` types in high-traffic components like `TreatmentPlansList`.
 - **Internationalization**: Batch cleanup of `messages/*.json` files to ensure strict key mapping.
-- **Build Validation**: End-to-end linting and type checking across Inventory, Radiology, and Patient modules.
+---
+
+# Development Plan - v1.1.0
+
+## Phase 6: UI Refinement & Branding Alignment
+- **Terminology Migration**: System-wide replacement of "Clinical Plan" with "Treatment Plan" in components and translations.
+- **Timeline Logic**: Implementation of `useEffect` in `TreatmentPlansList.tsx` for automated `approxEndDate` calculation.
+- **Responsive Layout**: Re-structuring the treatment plan modal to accommodate new timeline and budget inputs.
+
+## Phase 7: Financial Architecture & Security
+- **Data Modeling**: Extending `TreatmentPlan` and `PlanStage` schemas to support `budget` (Number) and `approxDuration` (Number).
+- **Backend Masking**: Implementing logic in API `GET` routes to strip budget fields for users who are not Admins or the Primary Doctor.
+- **Write Protection**: Strengthening `POST` and `PUT` API endpoints with role-based validation to ensure sensitive cost data is only modifiable by authorized roles.
+
+## Phase 8: Aggregation & Audit
+- **Budget Summation**: Real-time aggregation of stage-level budgets into the parent `totalBudget` field.
+- **Enhanced Logging**: Updating audit history to capture modifications to duration, target end dates, and financial estimates.
+---
+
+# Development Plan - v1.2.0
+
+## Phase 9: UI Migration & Page Routing
+- **Page Implementation**: Creation of dedicated `/new` and `/[planId]/edit` routes for Treatment Plans within the `[id]/treatment-plans` directory.
+- **Component Factoring**: Migration of form logic from `TreatmentPlansList.tsx` into the standalone `TreatmentPlanForm.tsx` component.
+- **Protected Routing**: Ensuring proper auth and role checks on the new dedicated pages.
+
+## Phase 10: Template Management System
+- **Template Architecture**: Implementation of the `TreatmentPlanTemplate` model with stages and budget blueprints.
+- **API Development**: Building the `/api/treatment-plan-templates` endpoint to support template listing and admin-only creation.
+- **UI Integration**: Adding the "Create from Template" selection modal and "Save as Template" action for Admins in the main form.
+
+## Phase 11: Internationalization & Localization Refined
+- **Currency Provider**: Utilization of `SettingsContext` to dynamically render currency symbols across the treatment plan lifecycle.
+- **Formatting Standards**: Implementation of standardized currency and number formatting in the new form components.
+
+## Phase 12: Backend Stability & Audit Enhancement
+- **Conflict Resolution**: Refactoring the `PUT` handler to resolve Mongoose path collision during history updates.
+- **Granular History**: Extending history entry details to specifically document stage-level mutations (Add/Edit/Delete).
+- **TypeScript Optimization**: System-wide resolution of linting errors in the Treatment Plan module for enhanced code quality.
+---
+
+# Development Plan - v1.2.5 & v1.2.6
+
+## Phase 13: Clinical Infrastructure Extensions
+- **Data Modeling**: Update `Patient` schema for `familyHistory` and create `StageType` model.
+- **API Extension**: Implementation of `/api/stage-types` to support administrative categorization of treatment stages.
+- **Frontend Integration**: Enabling `TreatmentPlanForm` to fetch and display dynamic stage categories.
+
+## Phase 14: Patient Record Enrichment
+- **Detailed Componentry**: Development of full-text renderer for medical history and clinical notes in the `PatientView` sidebar.
+- **Dynamic Terminology**: Synchronization of clinical labels (Allergies, Meds, History) across all patient-specific views.
+
+---
+
+# Development Plan - v1.2.7, v1.2.8 & v1.2.9
+
+## Phase 15: Patient View Layout & State Management
+- **Dashboard Refactor**: Re-ordering of tab sequences in `PatientViewPage` and embedding medical records into the primary details grid.
+- **Edit Logic Hardening**: Expanding `EditPatientPage` state to manage the full suite of clinical fields.
+- **Persistence Verification**: Debugging and resolving data-loss edge cases in the `NewPatientPage` submission handler.
+
+---
+
+# Development Plan - v1.2.10, v1.2.11 & v1.2.12
+
+## Phase 16: Sidebar Widget Optimization Part I
+- **Structural Cleanup**: Removal of legacy header components and conditional rendering of the clinical sidebar based on patient availability.
+- **Visual Refactoring**: Building a new card-based primitive for displaying patient clinical data with premium shadows and borders.
+
+## Phase 17: Sidebar Widget Optimization Part II
+- **Space & Fluidity**: Dynamic layout switching for clinical attributes (moving blood group to the name card, expanding text-heavy sections to full width).
+- **Typography Standardization**: 
+    - Implementing a rigid typography system for clinical labels (Subtitle-down style).
+    - Hardening font weights and sizes to ensure cross-module aesthetic balance.
+    - Final UI audit and walkthrough documentation generation.

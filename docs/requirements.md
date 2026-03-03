@@ -34,4 +34,203 @@
 - [x] Build Treatment Plan CRUD and Stage management UI
 - [x] Implement `.populate()` logic for doctor/patient references
 - [x] Establish backend audit log system
-- [x] Fix critical type errors in Inventory and Radiology modules
+---
+
+# Requirements - v1.1.0
+
+## Treatment Plan Enhancements
+
+### 1. UI/UX Refinement
+- **Terminology Update**: Standardized renaming of "clinical plan" to **"Treatment Plan"** across all user-facing modals, buttons, and list views.
+- **Dynamic Timeline Calculation**: Implementation of an automated `approxEndDate` calculator based on the plan's `startDate` and a user-defined `approxDuration` (in days).
+
+### 2. Financial Tracking & Budgeting
+- **Stage-Level Budgeting**: Ability to assign an estimated budget to each individual treatment stage.
+- **Aggregated Plan Budget**: Real-time summation of all stage budgets to display a total estimated budget for the entire treatment plan.
+
+### 3. Role-Based Financial Security
+- **Visibility Restrictions**: Pricing and budget fields are strictly restricted to **Admins** and the **In-Charge (Primary) Doctor**.
+- **Data Masking**: Backend implementation to ensure sensitive budget data is stripped from API responses for unauthorized users.
+- **Write Protection**: API-level validation to prevent unauthorized users from submitting or modifying budget information.
+
+## Technical Tasks (v1.1.0)
+- [x] Update `TreatmentPlan` and `PlanStage` Mongoose models with duration and budget fields
+- [x] Refactor `TreatmentPlansList.tsx` for terminology consistency and automated calculations
+- [x] Implement backend utility for budget and duration-based logic
+- [x] Harden API routes (`GET`, `POST`, `PUT`) with role-based budget masking and protection
+---
+
+# Requirements - v1.2.0
+
+## Treatment Plan & Template Architecture
+
+### 1. Structural UI Migration
+- **Decoupled Forms**: Transition from modal-based plan management to dedicated pages for creation and editing to prevent UI nesting issues.
+- **Reusable Components**: Extraction of the template/plan form logic into a high-order `TreatmentPlanForm` component for architectural consistency.
+
+### 2. Treatment Plan Templates
+- **Template Library**: Introduction of the `TreatmentPlanTemplate` model to store reusable clinical workflows.
+- **Quick Initiation**: Ability to "Create from Template" within the patient dashboard, pre-populating all stages, budgets, and instructions.
+- **Admin-Controlled Curation**: Template management (creation/modification) is restricted to Admins, while all doctors can utilize them for patient care.
+
+### 3. Localization & Currency Standards
+- **Global Settings Integration**: Dynamic detection of preferred currency symbols (₹, $, €, etc.) across all financial modules of the Treatment Plan.
+- **Consistent Unit Display**: Standardized display of currency units in both summary lists and detailed forms.
+
+### 4. System Integrity & Audit Logs
+- **Atomic History Updates**: Refactored backend update strategy to handle history entries atomically, resolving Mongoose path conflicts.
+- **Enhanced Change Tracking**: Automated recording of specific actions such as stage additions, removals, and detail modifications.
+
+## Technical Tasks (v1.2.0)
+- [x] Create dedicated routes for plan creation (`/new`) and editing (`/[id]/edit`)
+- [x] Build and integrate `TreatmentPlanTemplate` model and API
+- [x] Implement template selection modal and pre-population logic
+- [x] Integrate `SettingsContext` for dynamic currency symbol rendering
+- [x] Resolve Mongoose history path conflict in PUT route
+- [x] Implement "Save as Template" functionality for Admin users
+
+---
+
+# Requirements - v1.2.1
+
+## Template UI Enhancements
+
+### 1. Adaptive Empty States
+- **Admin-Specific Guidance**: When no templates exist, admins are presented with a "Create Your First Template" button to encourage workflow standardization.
+- **Role-Based Messaging**: Tailored empty state descriptions that explain the value of templates based on the user's role.
+
+## Technical Tasks (v1.2.1)
+- [x] Implement role-check for "Create Template" button in selection modal
+- [x] Re-style empty template state for better visual guidance
+
+---
+
+# Requirements - v1.2.2
+
+## UI Decoupling - Part II
+
+### 1. Dedicated View Architecture
+- **Full-Page Detail View**: Transitioned the treatment plan summary/detail view from a modal to a dedicated route (`/patients/[id]/treatment-plans/[planId]`).
+- **Enhanced Data Presentation**: Leveraged the full-page layout to provide a more spacious and informative view of clinical stages and history.
+- **Improved UX Flow**: Simplified the patient profile by removing heavy modal logic and providing clear back-navigation to the main dashboard.
+
+## Technical Tasks (v1.2.2)
+- [x] Create the `TreatmentPlanViewPage` component and route
+- [x] Update `TreatmentPlansList` navigation for detail inspection
+- [x] Remove obsolete `Detail View Modal` from the main list component
+
+---
+
+# Requirements - v1.2.3
+
+## UI Polish & Navigation Refinement
+
+### 1. Terminology Standardization
+- **Standardized Labels**: Unified the "Lead Doctor" and "In-charge Physician" labels into a consistent "In-charge Doctor" term across the module.
+
+### 2. Robust Date Handling
+- **Graceful Fallbacks**: Implemented strict date parsing with safe fallbacks (`-`) in the detail view to eliminate "Invalid Date" messages on legacy or malformed records.
+
+### 3. Contextual Navigation
+- **Tab-Aware Routing**: Updated the patient profile page to support `?tab=` query parameters.
+- **Improved Return flow**: Re-routed "Back" buttons in treatment plan pages to specifically return to the "Treatment Plan" tab, maintaining user context.
+
+## Technical Tasks (v1.2.3)
+- [x] Implement `tab` query param support in `PatientViewPage`
+- [x] Rename doctor-related labels in `TreatmentPlanViewPage` and `TreatmentPlanForm`
+- [x] Fix date rendering logic in `TreatmentPlanViewPage`
+- [x] Update all "Back" links to return to the correct patient tab
+
+---
+
+---
+
+# Requirements - v1.2.5
+
+## Clinical Infrastructure & Stage Categorization
+
+### 1. Stage Type Management
+- **Categorization**: Ability to categorize treatment plan stages by type (e.g., Surgery, Lab, Consultation).
+- **Admin Control**: Restriction of stage type management (creation/deletion) to Administrators.
+- **Doctor Workflow**: Enabling doctors to assign predefined types to stages during plan creation.
+
+### 2. Expanded Medical Schema
+- **Family History**: Addition of structured family history tracking to the Patient model.
+
+## Technical Tasks (v1.2.5)
+- [x] Create `StageType` model and API endpoints
+- [x] Add `familyHistory` to the `Patient` schema and API mapping
+- [x] Integrate stage type selection into `TreatmentPlanForm`
+
+---
+
+# Requirements - v1.2.6 & v1.2.7
+
+## Patient Record Visibility & Organization
+
+### 1. Tabbed Navigation Refinement
+- **Prioritized Access**: Reordering of patient profile tabs to place "Medical Information" immediately after "Patient Details".
+- **Main Tab Integration**: Direct inclusion of detailed medical records (Allergies, Medications, History) in the primary "Patient Details" tab for immediate clinical visibility.
+
+### 2. Expanded Detail View
+- **Summarized vs. Detailed**: Transition from showing summaries to full-text records for clinical history and medications.
+
+## Technical Tasks (v1.2.6 & v1.2.7)
+- [x] Reorder tabs in `PatientViewPage`
+- [x] Implement detailed medical section in the primary dashboard tab
+- [x] Synchronize clinical data display between view and edit modules
+
+---
+
+# Requirements - v1.2.8 & v1.2.9
+
+## Patient Data Management Lifecycle
+
+### 1. Complete Edit Capabilities
+- **Field Parity**: Ensuring the Edit Patient form includes all clinical fields (Allergies, Medications, Family History) present in the creation flow.
+
+### 2. Data Persistence Integrity
+- **Creation Flow Fix**: Resolution of data loss issues where specific medical fields (Family History) were not persisted during the new patient intake.
+
+## Technical Tasks (v1.2.8 & v1.2.9)
+- [x] Update `EditPatientPage` with missing clinical fields
+- [x] Fix data submission mapping in `NewPatientPage`
+- [x] Verify state consistency during patient updates
+
+---
+
+# Requirements - v1.2.10
+
+## Treatment Plan View Refinement
+
+### 1. UI De-cluttering
+- **Header Removal**: Removal of the redundant "Patient Medical Summary" header to maximize vertical space.
+- **Icon Standardization**: Removal of distracting alert icons in favor of a clean, text-driven hierarchy.
+
+### 2. Aesthetic Consistency
+- **Card-Based UI**: Implementation of a card-based layout for clinical data matching the "In-Charge Doctor" section.
+
+## Technical Tasks (v1.2.10)
+- [x] Refactor clinical sidebar widget in `TreatmentPlanViewPage`
+- [x] Implement new card styles for patient clinical details
+
+---
+
+# Requirements - v1.2.11 & v1.2.12
+
+## Advanced Sidebar Layout & Typography
+
+### 1. Integrated Identity Card
+- **Space Optimization**: Merging of the blood group indicator directly into the patient name card.
+
+### 2. Multi-Line Clinical Visibility
+- **Full-Width Blocks**: Transition of Allergies and Medications from narrow grid items to full-width blocks to support longer medical notes.
+
+### 3. Typography Standardization
+- **Unified Hierarchy**: Standardization of all clinical labels to match the "Patient Identity" format (labels below values).
+- **Stylistic Uniformity**: Universal application of font weights and sizes across all clinical data points, removing inconsistent italics.
+
+## Technical Tasks (v1.2.11 & v1.2.12)
+- [x] Refactor sidebar block layout and grid system
+- [x] Standardize text styles and label placement across clinical widgets
+- [x] Update `walkthrough.md` with consolidated UI refinements

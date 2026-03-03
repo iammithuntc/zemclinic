@@ -26,7 +26,24 @@ export async function GET(
             .populate('doctorId', 'name email specialization')
             .sort({ sequenceNumber: 1 });
 
-        return NextResponse.json({ plan, stages });
+        // Mask budget for unauthorized users
+        const planObj = plan.toObject();
+        const primDocId = typeof planObj.primaryDoctorId === 'object' ? planObj.primaryDoctorId?._id.toString() : planObj.primaryDoctorId?.toString();
+        const isAuthorized = session.user.role === 'admin' || primDocId === (session.user as any).id;
+
+        if (!isAuthorized) {
+            delete planObj.totalBudget;
+        }
+
+        const sanitizedStages = stages.map(s => {
+            const sObj = s.toObject();
+            if (!isAuthorized) {
+                delete sObj.budget;
+            }
+            return sObj;
+        });
+
+        return NextResponse.json({ plan: planObj, stages: sanitizedStages });
     } catch (error: any) {
         console.error('Error fetching treatment plan:', error);
         return NextResponse.json({ error: error.message || 'Failed to fetch treatment plan' }, { status: 500 });
@@ -48,7 +65,25 @@ export async function PUT(
         const body = await request.json();
         const { stages, historyEntry, ...planData } = body;
 
-        const updatePayload: any = { ...planData };
+        // Security: Only Admin or Primary Doctor can update budget
+        const existingPlan = await TreatmentPlan.findById(id);
+        if (!existingPlan) {
+            return NextResponse.json({ error: 'Treatment plan not found' }, { status: 404 });
+        }
+
+        const primDocId = typeof existingPlan.primaryDoctorId === 'object' ? (existingPlan.primaryDoctorId as any)?._id.toString() : existingPlan.primaryDoctorId?.toString();
+        const isAuthorized = session.user.role === 'admin' || primDocId === (session.user as any).id;
+
+        // If not authorized, remove budget fields from update
+        if (!isAuthorized) {
+            if (planData.totalBudget !== undefined) delete planData.totalBudget;
+            if (stages && Array.isArray(stages)) {
+                stages.forEach((s: any) => { if (s.budget !== undefined) delete s.budget; });
+            }
+        }
+
+        const { history, _id: bodyId, ...cleanPlanData } = planData;
+        const updatePayload: any = { ...cleanPlanData };
 
         // If a history entry is provided from the frontend, add it
         if (historyEntry) {

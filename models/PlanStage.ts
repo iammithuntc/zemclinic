@@ -13,6 +13,8 @@ export interface IPlanStage extends Document {
     encounters?: mongoose.Schema.Types.ObjectId[];
     doctorId?: mongoose.Schema.Types.ObjectId;
     doctorName?: string;
+    stageType?: string;
+    budget?: number;
     notes?: string;
     completedAt?: Date;
     createdAt: Date;
@@ -71,6 +73,14 @@ const PlanStageSchema: Schema = new Schema(
         doctorName: {
             type: String,
             trim: true,
+        },
+        stageType: {
+            type: String,
+            trim: true,
+        },
+        budget: {
+            type: Number,
+            default: 0,
         },
         notes: {
             type: String,

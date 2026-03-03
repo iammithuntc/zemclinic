@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -33,6 +33,9 @@ import TreatmentPlansList from '../../components/treatment-plans/TreatmentPlansL
 export default function PatientViewPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+
   const [patient, setPatient] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -40,7 +43,7 @@ export default function PatientViewPage() {
   const [loadingAiResults, setLoadingAiResults] = useState(true);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loadingAppointments, setLoadingAppointments] = useState(true);
-  const [activeTab, setActiveTab] = useState<'details' | 'encounters' | 'appointments' | 'treatment-plan' | 'ai-treatment-suggestions' | 'prescription' | 'drug-interaction' | 'image-analysis' | 'appointment-optimizer' | 'risk-assessment' | 'voice-transcription'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'medical-info' | 'encounters' | 'appointments' | 'treatment-plan' | 'ai-treatment-suggestions' | 'prescription' | 'drug-interaction' | 'image-analysis' | 'appointment-optimizer' | 'risk-assessment' | 'voice-transcription'>((tabParam as any) || 'details');
   const [selectedResult, setSelectedResult] = useState<any>(null);
   const [selectedSymptomAnalysis, setSelectedSymptomAnalysis] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
@@ -145,6 +148,12 @@ export default function PatientViewPage() {
       fetchAIResults();
     }
   }, [params.id]);
+
+  useEffect(() => {
+    if (tabParam) {
+      setActiveTab(tabParam as any);
+    }
+  }, [tabParam]);
 
   // Delete AI result
   const handleDeleteResult = async (resultId: string, resultTitle: string) => {
@@ -253,6 +262,7 @@ export default function PatientViewPage() {
 
   const tabs = [
     { id: 'details', label: 'Patient Details', icon: User },
+    { id: 'medical-info', label: 'Medical Information', icon: FileText },
     { id: 'encounters', label: 'Encounters', icon: FileText },
     { id: 'appointments', label: 'Appointments', icon: Calendar, count: appointments.length },
     { id: 'treatment-plan', label: 'Treatment Plans', icon: Pill },
@@ -444,12 +454,119 @@ export default function PatientViewPage() {
                       )}
 
                       {/* Medical History */}
-                      {patient.medicalHistory && (
+                      {patient.medicalHistory && (Array.isArray(patient.medicalHistory) ? patient.medicalHistory.length > 0 : patient.medicalHistory) && (
                         <div>
                           <h2 className="text-lg font-semibold text-gray-900 mb-4">Medical History</h2>
-                          <p className="text-sm text-gray-900">{patient.medicalHistory}</p>
+                          <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-900 whitespace-pre-wrap">
+                            {Array.isArray(patient.medicalHistory) ? patient.medicalHistory[0] : patient.medicalHistory}
+                          </div>
                         </div>
                       )}
+
+                      {/* Family History */}
+                      {patient.familyHistory && (Array.isArray(patient.familyHistory) ? patient.familyHistory.length > 0 : patient.familyHistory) && (
+                        <div>
+                          <h2 className="text-lg font-semibold text-gray-900 mb-4">Family History</h2>
+                          <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-900 whitespace-pre-wrap">
+                            {Array.isArray(patient.familyHistory) ? patient.familyHistory[0] : patient.familyHistory}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Allergies & Medications */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {patient.allergies && (Array.isArray(patient.allergies) ? patient.allergies.length > 0 : patient.allergies) && (
+                          <div>
+                            <h2 className="text-lg font-semibold text-gray-900 mb-4">Allergies</h2>
+                            <div className="bg-red-50 border border-red-100 rounded-lg p-4 text-sm text-red-900">
+                              {Array.isArray(patient.allergies) ? patient.allergies[0] : patient.allergies}
+                            </div>
+                          </div>
+                        )}
+                        {patient.currentMedications && (Array.isArray(patient.currentMedications) ? patient.currentMedications.length > 0 : patient.currentMedications) && (
+                          <div>
+                            <h2 className="text-lg font-semibold text-gray-900 mb-4">Current Medications</h2>
+                            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-900 whitespace-pre-wrap">
+                              {Array.isArray(patient.currentMedications) ? patient.currentMedications[0] : patient.currentMedications}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Medical Information Tab - Detailed View */}
+                {activeTab === 'medical-info' && (
+                  <div className="p-6">
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                        <FileText className="h-6 w-6 text-green-600 mr-2" />
+                        Detailed Medical Information
+                      </h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Blood Type & Quick Info */}
+                      <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Vital Medical Info</h3>
+                        <div className="space-y-4">
+                          <div className="flex items-start justify-between pb-4 border-b border-gray-200">
+                            <span className="text-sm font-medium text-gray-600">Blood Type</span>
+                            <span className="text-base font-bold text-red-600">{patient.bloodType || 'Not specified'}</span>
+                          </div>
+                          <div className="pt-2">
+                            <span className="text-sm font-medium text-gray-600 block mb-2">Allergies</span>
+                            {patient.allergies && patient.allergies.length > 0 && patient.allergies[0] ? (
+                              <div className="flex flex-wrap gap-2">
+                                {patient.allergies[0].split(',').map((allergy: string, idx: number) => (
+                                  <span key={idx} className="bg-red-50 text-red-700 px-3 py-1 rounded-full text-sm font-medium border border-red-100 italic">
+                                    {allergy.trim()}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-400 italic">No known allergies</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Current Medications */}
+                      <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Current Medications</h3>
+                        {patient.currentMedications && patient.currentMedications.length > 0 && patient.currentMedications[0] ? (
+                          <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
+                            {patient.currentMedications[0]}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-400 italic">No medications listed</p>
+                        )}
+                      </div>
+
+                      {/* Medical History */}
+                      <div className="md:col-span-2 bg-gray-50 rounded-xl p-6 border border-gray-100">
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Clinical Medical History</h3>
+                        {patient.medicalHistory && patient.medicalHistory.length > 0 && patient.medicalHistory[0] ? (
+                          <div className="prose prose-sm max-w-none text-gray-800 leading-relaxed whitespace-pre-wrap">
+                            {patient.medicalHistory[0]}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-400 italic">No medical history recorded</p>
+                        )}
+                      </div>
+
+                      {/* Family Medical History */}
+                      <div className="md:col-span-2 bg-gray-50 rounded-xl p-6 border border-gray-100">
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Family Medical History</h3>
+                        {patient.familyHistory && (Array.isArray(patient.familyHistory) ? patient.familyHistory.length > 0 && patient.familyHistory[0] : patient.familyHistory) ? (
+                          <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
+                            {Array.isArray(patient.familyHistory) ? patient.familyHistory[0] : patient.familyHistory}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-400 italic">No family history available</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

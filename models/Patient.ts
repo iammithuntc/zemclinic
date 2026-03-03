@@ -18,6 +18,7 @@ export interface IPatient {
   medicalHistory: string[];
   allergies: string[];
   currentMedications: string[];
+  familyHistory?: string[];
   bloodType?: 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
   insuranceProvider?: string;
   insuranceNumber?: string;
@@ -93,6 +94,10 @@ const patientSchema = new mongoose.Schema<IPatient>(
       trim: true,
     }],
     currentMedications: [{
+      type: String,
+      trim: true,
+    }],
+    familyHistory: [{
       type: String,
       trim: true,
     }],

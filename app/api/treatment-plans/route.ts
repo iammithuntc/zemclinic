@@ -21,7 +21,20 @@ export async function GET(request: Request) {
         }
 
         const plans = await TreatmentPlan.find(query).sort({ createdAt: -1 });
-        return NextResponse.json({ plans });
+
+        // Mask budget for unauthorized users
+        const sanitizedPlans = plans.map(plan => {
+            const planObj = plan.toObject();
+            const primDocId = typeof planObj.primaryDoctorId === 'object' ? planObj.primaryDoctorId?._id.toString() : planObj.primaryDoctorId?.toString();
+            const isAuthorized = session.user.role === 'admin' || primDocId === (session.user as any).id;
+
+            if (!isAuthorized) {
+                delete planObj.totalBudget;
+            }
+            return planObj;
+        });
+
+        return NextResponse.json({ plans: sanitizedPlans });
     } catch (error: any) {
         console.error('Error fetching treatment plans:', error);
         return NextResponse.json({ error: error.message || 'Failed to fetch treatment plans' }, { status: 500 });
@@ -38,6 +51,16 @@ export async function POST(request: Request) {
         await dbConnect();
         const body = await request.json();
         const { stages, ...planData } = body;
+
+        // Security: Only Admin or In-Charge Doctor can set budget
+        const isAuthorized = session.user.role === 'admin' || planData.primaryDoctorId === (session.user as any).id;
+
+        if (!isAuthorized) {
+            if (planData.totalBudget !== undefined) delete planData.totalBudget;
+            if (stages && Array.isArray(stages)) {
+                stages.forEach((s: any) => { if (s.budget !== undefined) delete s.budget; });
+            }
+        }
 
         // Add initial history entry
         const plan = await TreatmentPlan.create({

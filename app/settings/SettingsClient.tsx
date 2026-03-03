@@ -22,7 +22,9 @@ import {
     Shield,
     Database,
     Globe,
-    Palette
+    Palette,
+    Layers,
+    Trash2
 } from 'lucide-react';
 
 const currencies = [
@@ -80,6 +82,10 @@ export default function SettingsClient() {
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [formData, setFormData] = useState<any>({});
     const [activeTab, setActiveTab] = useState('general');
+    const [systemStageTypes, setSystemStageTypes] = useState<any[]>([]);
+    const [loadingStageTypes, setLoadingStageTypes] = useState(false);
+    const [newStageType, setNewStageType] = useState({ name: '', description: '' });
+    const [stageTypeActionLoading, setStageTypeActionLoading] = useState(false);
 
     // Check if user is admin
     useEffect(() => {
@@ -96,6 +102,76 @@ export default function SettingsClient() {
             });
         }
     }, [settings, currentLanguage]);
+
+    const fetchStageTypes = async () => {
+        setLoadingStageTypes(true);
+        try {
+            const res = await fetch('/api/stage-types');
+            if (res.ok) {
+                const data = await res.json();
+                setSystemStageTypes(data);
+            }
+        } catch (error) {
+            console.error('Error fetching stage types:', error);
+        } finally {
+            setLoadingStageTypes(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'stage-types') {
+            fetchStageTypes();
+        }
+    }, [activeTab]);
+
+    const handleAddStageType = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newStageType.name) return;
+
+        setStageTypeActionLoading(true);
+        try {
+            const res = await fetch('/api/stage-types', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newStageType)
+            });
+
+            if (res.ok) {
+                setNewStageType({ name: '', description: '' });
+                fetchStageTypes();
+                setMessage({ type: 'success', text: 'Stage type added successfully' });
+            } else {
+                const err = await res.json();
+                setMessage({ type: 'error', text: err.error || 'Failed to add stage type' });
+            }
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Error adding stage type' });
+        } finally {
+            setStageTypeActionLoading(false);
+        }
+    };
+
+    const handleDeleteStageType = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this stage type?')) return;
+
+        setStageTypeActionLoading(true);
+        try {
+            const res = await fetch(`/api/stage-types?id=${id}`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                fetchStageTypes();
+                setMessage({ type: 'success', text: 'Stage type deleted successfully' });
+            } else {
+                setMessage({ type: 'error', text: 'Failed to delete stage type' });
+            }
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Error deleting stage type' });
+        } finally {
+            setStageTypeActionLoading(false);
+        }
+    };
 
     // Apply theme changes immediately
     useEffect(() => {
@@ -424,6 +500,17 @@ export default function SettingsClient() {
                                     >
                                         <MapPin className="h-5 w-5" />
                                         <span>{t('settings.contact')}</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setActiveTab('stage-types')}
+                                        className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'stage-types'
+                                            ? 'bg-blue-100 text-blue-700'
+                                            : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                                            }`}
+                                    >
+                                        <Layers className="h-5 w-5" />
+                                        <span>Stage Types</span>
                                     </button>
                                 </nav>
                             </div>
@@ -943,6 +1030,88 @@ export default function SettingsClient() {
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                 />
                                             </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Stage Types Management Tab */}
+                                {activeTab === 'stage-types' && (
+                                    <div className="space-y-8 animate-in fade-in duration-300">
+                                        <div className="flex items-center space-x-4 mb-8">
+                                            <div className="p-3 bg-blue-100 rounded-2xl">
+                                                <Layers className="h-6 w-6 text-blue-600" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-black text-gray-900">Manage Stage Types</h3>
+                                                <p className="text-sm text-gray-500 font-medium">Define global stage categories for treatment plans</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Add New Stage Type Form */}
+                                        <div className="bg-gray-50 rounded-2xl border border-gray-100 p-6">
+                                            <h4 className="text-xs font-black uppercase text-gray-400 tracking-widest mb-4">Add New Stage Type</h4>
+                                            <div className="flex flex-col md:flex-row gap-4">
+                                                <div className="flex-1">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Stage Type Name (e.g. Diagnostic, Surgical)"
+                                                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                                                        value={newStageType.name}
+                                                        onChange={(e) => setNewStageType({ ...newStageType, name: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div className="flex-[2]">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Short description (Optional)"
+                                                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                                        value={newStageType.description}
+                                                        onChange={(e) => setNewStageType({ ...newStageType, description: e.target.value })}
+                                                    />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleAddStageType}
+                                                    disabled={stageTypeActionLoading || !newStageType.name}
+                                                    className="px-6 py-2 bg-blue-600 text-white text-sm font-black rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-100 disabled:opacity-50"
+                                                >
+                                                    Add
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Stage Types List */}
+                                        <div className="space-y-4">
+                                            <h4 className="text-xs font-black uppercase text-gray-400 tracking-widest px-2">Existing Stage Types</h4>
+                                            {loadingStageTypes ? (
+                                                <div className="flex justify-center py-8">
+                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                                </div>
+                                            ) : systemStageTypes.length === 0 ? (
+                                                <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                                                    <Layers className="h-12 w-12 text-gray-200 mx-auto mb-3" />
+                                                    <p className="text-sm font-bold text-gray-400 italic">No stage types defined yet.</p>
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {systemStageTypes.map((st) => (
+                                                        <div key={st._id} className="p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-blue-200 transition-all flex justify-between items-center group">
+                                                            <div>
+                                                                <h5 className="font-black text-gray-900 uppercase text-sm tracking-tight">{st.name}</h5>
+                                                                <p className="text-xs text-gray-500 font-medium mt-1">{st.description || 'No description provided'}</p>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDeleteStageType(st._id)}
+                                                                disabled={stageTypeActionLoading}
+                                                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                                            >
+                                                                <Trash2 className="h-5 w-5" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}

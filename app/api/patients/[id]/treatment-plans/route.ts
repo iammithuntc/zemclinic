@@ -54,7 +54,19 @@ export async function GET(
             .populate('primaryDoctorId', 'name email specialization')
             .sort({ createdAt: -1 });
 
-        return NextResponse.json({ plans });
+        // Mask budget for unauthorized users
+        const sanitizedPlans = plans.map(plan => {
+            const planObj = plan.toObject();
+            const primDocId = typeof planObj.primaryDoctorId === 'object' ? planObj.primaryDoctorId?._id.toString() : planObj.primaryDoctorId?.toString();
+            const isAuthorized = userRole === 'admin' || primDocId === userId;
+
+            if (!isAuthorized) {
+                delete planObj.totalBudget;
+            }
+            return planObj;
+        });
+
+        return NextResponse.json({ plans: sanitizedPlans });
     } catch (error: any) {
         console.error('Error fetching patient treatment plans:', error);
         return NextResponse.json({ error: error.message || 'Failed to fetch patient treatment plans' }, { status: 500 });

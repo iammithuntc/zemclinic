@@ -24,11 +24,11 @@ async function seedDatabase() {
     console.log('Cleared existing data');
 
     // Create demo doctor user with hashed password
-    const existingDoctor = await User.findOne({ email: 'doctor@aidoc.com' });
+    const existingDoctor = await User.findOne({ email: 'doctor@zemclinic.com' });
     if (!existingDoctor) {
       const hashedPassword = await bcrypt.hash('password123', 12);
       const doctor = new User({
-        email: 'doctor@aidoc.com',
+        email: 'doctor@zemclinic.com',
         name: 'Dr. Demo User',
         role: 'doctor',
         password: hashedPassword,
@@ -44,11 +44,11 @@ async function seedDatabase() {
     }
 
     // Create admin user with hashed password
-    const existingAdmin = await User.findOne({ email: 'admin@aidoc.com' });
+    const existingAdmin = await User.findOne({ email: 'admin@zemclinic.com' });
     if (!existingAdmin) {
       const hashedPassword = await bcrypt.hash('password123', 12);
       const admin = new User({
-        email: 'admin@aidoc.com',
+        email: 'admin@zemclinic.com',
         name: 'Admin User',
         role: 'admin',
         password: hashedPassword,

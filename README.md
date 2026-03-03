@@ -1,4 +1,4 @@
-# AI Doctor - Practice Management System
+# ZemClinic - Practice Management System
 
 A comprehensive, AI-powered practice management software built with Next.js, TypeScript, and Tailwind CSS. This system provides healthcare professionals with tools to manage patients, appointments, medical reports, and access AI-powered medical assistance.
 
@@ -73,12 +73,10 @@ A comprehensive, AI-powered practice management software built with Next.js, Typ
 ✅ **0 Security Vulnerabilities** - All packages updated to latest secure versions:
 - NextAuth.js 4.24.13: Fixed email misdelivery vulnerability
 - js-yaml 4.1.1+: Fixed prototype pollution (via npm overrides)
-- All critical security patches applied
 
-## 📁 Project Structure
 
-```
-ai-doc/
+
+ZemClinic/
 ├── app/                          # Next.js App Router
 │   ├── page.tsx                 # Main Dashboard (Protected)
 │   ├── login/                   # Authentication
@@ -136,13 +134,7 @@ ai-doc/
 4. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
-### 🔐 Login Credentials
 
-**Demo Account:**
-- **Email**: `doctor@aidoc.com`
-- **Password**: `password123`
-
-*Note: This is a demo system. In production, implement proper authentication with your backend.*
 
 ### Available Scripts
 

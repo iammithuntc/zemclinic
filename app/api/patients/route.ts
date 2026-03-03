@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
       medicalHistory: body.medicalHistory || [],
       allergies: body.allergies || [],
       currentMedications: body.currentMedications || [],
+      familyHistory: body.familyHistory || [],
     };
 
     // Validate required fields
