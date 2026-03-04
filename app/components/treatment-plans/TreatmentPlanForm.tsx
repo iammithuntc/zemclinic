@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Save,
     Plus,
@@ -43,6 +43,7 @@ interface TreatmentPlanFormProps {
 }
 
 export default function TreatmentPlanForm({ patientId, initialData, isEdit = false }: TreatmentPlanFormProps) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
     const searchParams = useSearchParams();
     const templateId = searchParams.get('templateId');
@@ -63,6 +64,7 @@ export default function TreatmentPlanForm({ patientId, initialData, isEdit = fal
         approxDuration: initialData?.approxDuration || 0,
         approxEndDate: initialData?.approxEndDate ? new Date(initialData.approxEndDate).toISOString().split('T')[0] : '',
         totalBudget: initialData?.totalBudget || 0,
+        notes: initialData?.notes || '',
         documents: initialData?.documents?.map((doc: any) => ({ name: doc.name, url: doc.url, stageId: doc.stageId })) || [] as { name: string; url: string; stageId?: string }[],
         stages: initialData?.stages?.map((s: any) => ({
             _id: s._id,
@@ -201,6 +203,12 @@ export default function TreatmentPlanForm({ patientId, initialData, isEdit = fal
         const payload = {
             ...formData,
             patientId,
+            primaryDoctorId: formData.primaryDoctorId || null,
+            notes: formData.notes,
+            stages: formData.stages.map((s: any) => ({
+                ...s,
+                doctorId: s.doctorId || null
+            })),
             status: initialData?.status || 'ACTIVE',
             historyEntry: {
                 action: isEdit ? 'PLAN_UPDATED_V12' : 'PLAN_CREATED',
@@ -228,6 +236,21 @@ export default function TreatmentPlanForm({ patientId, initialData, isEdit = fal
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+
+        const newDocs = Array.from(files).map(file => ({
+            name: file.name,
+            url: URL.createObjectURL(file), // Mock URL for demo
+            uploadedAt: new Date().toISOString(),
+            stageId: ''
+        }));
+
+        setFormData({ ...formData, documents: [...formData.documents, ...newDocs] });
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const isAuthorizedForBudget = () => {
@@ -328,13 +351,27 @@ export default function TreatmentPlanForm({ patientId, initialData, isEdit = fal
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Plan Description & Clinical Notes</label>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Plan Description (Patient-Facing)</label>
                             <textarea
-                                placeholder="Describe the overall goal and clinical considerations..."
-                                rows={6}
+                                placeholder="General description of the treatment goal..."
+                                rows={3}
                                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2 flex items-center">
+                                <FileText className="h-3 w-3 mr-1.5 text-blue-500" />
+                                Internal Clinical Notes
+                            </label>
+                            <textarea
+                                placeholder="Confidential clinical considerations and technical details..."
+                                rows={4}
+                                className="w-full px-4 py-3 bg-blue-50/30 border border-blue-100 rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                value={formData.notes || ''}
+                                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                             />
                         </div>
                     </div>
@@ -343,8 +380,8 @@ export default function TreatmentPlanForm({ patientId, initialData, isEdit = fal
                     <div className="space-y-6">
                         {isAuthorizedForBudget() && (
                             <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100 shadow-sm overflow-hidden relative group">
-                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                                    <DollarSign className="h-16 w-16 text-emerald-600" />
+                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform font-black text-6xl text-emerald-600 select-none">
+                                    {currencySymbol}
                                 </div>
                                 <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Estimated Total Budget</span>
                                 <div className="text-4xl font-black text-emerald-800 mt-2 flex items-baseline">
@@ -359,30 +396,87 @@ export default function TreatmentPlanForm({ patientId, initialData, isEdit = fal
                             <label className="block text-xs font-bold text-gray-500 uppercase flex items-center">
                                 <Upload className="h-3 w-3 mr-1.5" /> Documents
                             </label>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                multiple
+                                className="hidden"
+                                onChange={handleFileUpload}
+                            />
                             <div
-                                onClick={() => {
-                                    const name = prompt('Document Name:');
-                                    if (name) {
-                                        setFormData({ ...formData, documents: [...formData.documents, { name, url: '#', uploadedAt: new Date().toISOString() }] });
-                                    }
-                                }}
+                                onClick={() => fileInputRef.current?.click()}
                                 className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center bg-white hover:bg-gray-50 hover:border-blue-300 cursor-pointer transition-all"
                             >
                                 <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                                <span className="text-xs font-bold text-gray-600">Click to Upload</span>
-                                <span className="text-[10px] text-gray-400 mt-1 text-center">X-rays, Scans, or Clinical Reports</span>
+                                <span className="text-xs font-bold text-gray-600">Choose Files</span>
+                                <span className="text-[10px] text-gray-400 mt-1 text-center">Click to browse explorer</span>
                             </div>
 
-                            <div className="space-y-2">
-                                {formData.documents.map((doc: { name: string; url: string }, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-center p-2 bg-white border rounded-lg text-xs">
-                                        <span className="font-medium truncate">{doc.name}</span>
-                                        <button onClick={() => setFormData({ ...formData, documents: formData.documents.filter((_: any, i: number) => i !== idx) })} className="text-red-400 hover:text-red-600">
-                                            <X className="h-3.5 w-3.5" />
-                                        </button>
+                            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                                {formData.documents.map((doc: any, idx: number) => (
+                                    <div key={idx} className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm space-y-2">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <div className="flex items-center min-w-0">
+                                                <FileText className="h-4 w-4 text-indigo-400 mr-2 flex-shrink-0" />
+                                                <span className="text-[11px] font-bold text-gray-700 truncate">{doc.name}</span>
+                                            </div>
+                                            <button
+                                                onClick={() => setFormData({ ...formData, documents: formData.documents.filter((_: any, i: number) => i !== idx) })}
+                                                className="p-1 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex-shrink-0">Tag To:</span>
+                                            <select
+                                                className="flex-1 bg-gray-50 border-none text-[10px] font-bold text-blue-600 rounded-lg py-1 px-2 outline-none focus:ring-1 focus:ring-blue-200"
+                                                value={doc.stageId || ''}
+                                                onChange={(e) => {
+                                                    const ns = [...formData.documents];
+                                                    ns[idx].stageId = e.target.value;
+                                                    setFormData({ ...formData, documents: ns });
+                                                }}
+                                            >
+                                                <option value="">No Specific Stage</option>
+                                                <optgroup label="Treatment Stages">
+                                                    {formData.stages.filter((s: any) => s.name).map((s: any, i: number) => (
+                                                        <option key={i} value={s._id || i}>{s.name || `Stage ${i + 1}`}</option>
+                                                    ))}
+                                                </optgroup>
+                                                <optgroup label="Stage Types">
+                                                    {stageTypes.map((st, i) => (
+                                                        <option key={i} value={st.name}>{st.name}</option>
+                                                    ))}
+                                                </optgroup>
+                                            </select>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
+
+                            {formData.documents.length > 1 && (
+                                <div className="pt-2 border-t border-gray-100">
+                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Bulk Tagging</p>
+                                    <select
+                                        className="w-full bg-indigo-50 border-none text-[10px] font-black text-indigo-600 rounded-lg py-1.5 px-3 outline-none focus:ring-1 focus:ring-indigo-200"
+                                        onChange={(e) => {
+                                            if (!e.target.value) return;
+                                            const ns = formData.documents.map((d: any) => ({ ...d, stageId: e.target.value }));
+                                            setFormData({ ...formData, documents: ns });
+                                            e.target.value = '';
+                                        }}
+                                    >
+                                        <option value="">Apply selection to all...</option>
+                                        <optgroup label="Apply Stage Tag">
+                                            {formData.stages.filter((s: any) => s.name).map((s: any, i: number) => (
+                                                <option key={i} value={s._id || i}>{s.name}</option>
+                                            ))}
+                                        </optgroup>
+                                    </select>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

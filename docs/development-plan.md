@@ -111,3 +111,30 @@
     - Implementing a rigid typography system for clinical labels (Subtitle-down style).
     - Hardening font weights and sizes to ensure cross-module aesthetic balance.
     - Final UI audit and walkthrough documentation generation.
+
+---
+
+# Development Plan - v1.2.14 & v1.2.15
+
+## Phase 18: Layout Reversion & Integrity Fixes
+- **Label Repositioning**: Moving clinical labels back above the data blocks for specific fields (Allergies, Medications, History).
+- **Payload Sanitization**: Updating `TreatmentPlanForm` submission logic to map empty doctor strings to `null` to satisfy Mongoose Schema validation.
+
+## Phase 19: Plan Management UX
+- **Action Menu Refactor**: Transitioning static list actions to a dynamic 3-dot dropdown menu.
+- **Access Control Logic**: Implementing client-side role checks to hide destructive actions (Delete) from non-admin users.
+- **Soft-Delete Bridge**: Connecting the new action menu to the `DELETE` API route with a transaction confirmation modal.
+
+---
+
+# Development Plan - v1.3.0
+
+## Phase 20: UI Refinement & Data Visibility
+- **Relative Positioning Audit**: Correcting absolute menu offsets in Treatment Stage tables.
+- **Conditional Visibility**: Implementing industry-standard empty states for financials (`-` instead of `0`).
+- **View Expansion**: Adding Treatment Area, Clinical Notes, and Document attachments to the primary plan view.
+
+## Phase 21: Enhanced Assets Management
+- **File Uploader Overhaul**: Transitions from `prompt`-based metadata to standard file selection.
+- **Metadata Tagging**: Implementing a tagging system for documents linked to specific stages or categories.
+- **Financial Visuals**: Hardening the dynamic currency system to ensure persistent localization in all visual underlays.

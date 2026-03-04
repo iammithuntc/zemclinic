@@ -89,6 +89,7 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
     const [loading, setLoading] = useState(true);
     const [selectedStageForView, setSelectedStageForView] = useState<PlanStage | null>(null);
     const [showStageMenu, setShowStageMenu] = useState<string | null>(null);
+    const [showPlanMenu, setShowPlanMenu] = useState<string | null>(null);
 
     // Template states
     const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -135,6 +136,33 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
 
     const handleEditOpen = (plan: TreatmentPlan) => {
         router.push(`/patients/${patientId}/treatment-plans/${plan._id}/edit`);
+    };
+
+    const handleDeletePlan = async (plan: TreatmentPlan) => {
+        if (session?.user?.role !== 'admin') return;
+
+        const confirmed = confirm(`Are you sure you want to delete the treatment plan "${plan.title}"?\n\nWARNING: This will permanently remove all stages, budgets, and clinical data associated with this plan. This action cannot be undone.`);
+
+        if (!confirmed) return;
+
+        try {
+            const res = await fetch(`/api/treatment-plans/${plan._id}`, {
+                method: 'DELETE',
+            });
+
+            if (res.ok) {
+                fetchPlans(); // Refresh list
+                router.refresh();
+            } else {
+                const err = await res.json();
+                alert(`Error: ${err.error || 'Failed to delete plan'}`);
+            }
+        } catch (error) {
+            console.error('Error deleting plan:', error);
+            alert('Failed to delete treatment plan');
+        } finally {
+            setShowPlanMenu(null);
+        }
     };
 
     const handleCreateFromTemplate = async () => {
@@ -280,12 +308,55 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
                                                 />
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={() => handleEditOpen(plan)}
-                                            className="p-1 hover:bg-gray-200 rounded"
-                                        >
-                                            <MoreVertical className="h-5 w-5 text-gray-400" />
-                                        </button>
+                                        <div className="relative">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setShowPlanMenu(showPlanMenu === plan._id ? null : plan._id);
+                                                }}
+                                                className="p-1.5 hover:bg-gray-200 rounded-full transition-colors"
+                                            >
+                                                <MoreVertical className="h-5 w-5 text-gray-400" />
+                                            </button>
+
+                                            {showPlanMenu === plan._id && (
+                                                <>
+                                                    <div
+                                                        className="fixed inset-0 z-[70]"
+                                                        onClick={() => setShowPlanMenu(null)}
+                                                    />
+                                                    <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-gray-100 z-[80] py-1 text-left animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden">
+                                                        <button
+                                                            onClick={() => router.push(`/patients/${patientId}/treatment-plans/${plan._id}`)}
+                                                            className="w-full px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center font-bold"
+                                                        >
+                                                            <ExternalLink className="h-4 w-4 mr-2 text-blue-500" />
+                                                            View Detailed Plan
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleEditOpen(plan)}
+                                                            className="w-full px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center font-bold"
+                                                        >
+                                                            <Save className="h-4 w-4 mr-2 text-orange-500" />
+                                                            Edit Plan Details
+                                                        </button>
+                                                        {session?.user?.role === 'admin' && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (confirm(`Delete plan "${plan.title}"?`)) {
+                                                                        handleDeletePlan(plan);
+                                                                    }
+                                                                }}
+                                                                className="w-full px-4 py-2.5 text-xs text-red-600 hover:bg-red-50 flex items-center font-black border-t border-gray-50"
+                                                            >
+                                                                <LucideX className="h-4 w-4 mr-2" />
+                                                                Delete Entire Plan
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -343,41 +414,43 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
                                                                     Notes
                                                                 </span>
                                                             ) : null}
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setShowStageMenu(showStageMenu === stage._id ? null : stage._id);
-                                                                }}
-                                                                className="p-1 hover:bg-gray-100 rounded transition-colors"
-                                                            >
-                                                                <MoreVertical className="h-4 w-4 text-gray-400" />
-                                                            </button>
-                                                        </div>
+                                                            <div className="relative">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setShowStageMenu(showStageMenu === stage._id ? null : stage._id);
+                                                                    }}
+                                                                    className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                                                >
+                                                                    <MoreVertical className="h-4 w-4 text-gray-400" />
+                                                                </button>
 
-                                                        {showStageMenu === stage._id && (
-                                                            <div className="absolute right-6 mt-1 w-36 bg-white rounded-lg shadow-xl border border-gray-100 z-[60] py-1 text-left animate-in fade-in slide-in-from-top-2 duration-200">
-                                                                <button
-                                                                    onClick={() => { setSelectedStageForView(stage); setShowStageMenu(null); }}
-                                                                    className="w-full px-4 py-2 text-xs text-gray-700 hover:bg-gray-50 flex items-center"
-                                                                >
-                                                                    <ExternalLink className="h-3 w-3 mr-2" /> View Stage
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => { handleEditOpen(plan); setShowStageMenu(null); }}
-                                                                    className="w-full px-4 py-2 text-xs text-gray-700 hover:bg-gray-50 flex items-center"
-                                                                >
-                                                                    <Save className="h-3 w-3 mr-2" /> Edit Stage
-                                                                </button>
-                                                                {stage.status === 'NOT_STARTED' && (
-                                                                    <Link
-                                                                        href={`/appointments/new?patient=${patientId}&plan=${plan._id}&stage=${stage._id}${docName !== '-' ? `&doctorName=${encodeURIComponent(docName)}` : ''}`}
-                                                                        className="w-full px-4 py-2 text-xs text-blue-600 hover:bg-blue-50 flex items-center font-bold"
-                                                                    >
-                                                                        <Calendar className="h-3 w-3 mr-2" /> Schedule
-                                                                    </Link>
+                                                                {showStageMenu === stage._id && (
+                                                                    <div className="absolute right-0 mt-1 w-36 bg-white rounded-lg shadow-xl border border-gray-100 z-[60] py-1 text-left animate-in fade-in slide-in-from-top-2 duration-200">
+                                                                        <button
+                                                                            onClick={() => { setSelectedStageForView(stage); setShowStageMenu(null); }}
+                                                                            className="w-full px-4 py-2 text-xs text-gray-700 hover:bg-gray-50 flex items-center"
+                                                                        >
+                                                                            <ExternalLink className="h-3 w-3 mr-2" /> View Stage
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => { handleEditOpen(plan); setShowStageMenu(null); }}
+                                                                            className="w-full px-4 py-2 text-xs text-gray-700 hover:bg-gray-50 flex items-center"
+                                                                        >
+                                                                            <Save className="h-3 w-3 mr-2" /> Edit Stage
+                                                                        </button>
+                                                                        {stage.status === 'NOT_STARTED' && (
+                                                                            <Link
+                                                                                href={`/appointments/new?patient=${patientId}&plan=${plan._id}&stage=${stage._id}${docName !== '-' ? `&doctorName=${encodeURIComponent(docName)}` : ''}`}
+                                                                                className="w-full px-4 py-2 text-xs text-blue-600 hover:bg-blue-50 flex items-center font-bold"
+                                                                            >
+                                                                                <Calendar className="h-3 w-3 mr-2" /> Schedule
+                                                                            </Link>
+                                                                        )}
+                                                                    </div>
                                                                 )}
                                                             </div>
-                                                        )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );

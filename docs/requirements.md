@@ -216,21 +216,65 @@
 
 ---
 
-# Requirements - v1.2.11 & v1.2.12
+# Requirements - v1.2.14
 
-## Advanced Sidebar Layout & Typography
+## Sidebar Label Alignment
 
-### 1. Integrated Identity Card
-- **Space Optimization**: Merging of the blood group indicator directly into the patient name card.
+### 1. Label Position Reversion
+- **Specific Field Reversion**: Move labels for **Known Allergies**, **Current Medications**, and **Clinical History** back to their original position **above** the value cards.
+- **Hierarchy Retention**: Keep **Patient Identity** as a subtitle (below the value) to maintain clinical focus.
 
-### 2. Multi-Line Clinical Visibility
-- **Full-Width Blocks**: Transition of Allergies and Medications from narrow grid items to full-width blocks to support longer medical notes.
+## Technical Tasks (v1.2.14)
+- [x] Reposition clinical labels in `TreatmentPlanViewPage` sidebar
+- [x] Audit typography for vertical spacing consistency
 
-### 3. Typography Standardization
-- **Unified Hierarchy**: Standardization of all clinical labels to match the "Patient Identity" format (labels below values).
-- **Stylistic Uniformity**: Universal application of font weights and sizes across all clinical data points, removing inconsistent italics.
+---
 
-## Technical Tasks (v1.2.11 & v1.2.12)
-- [x] Refactor sidebar block layout and grid system
-- [x] Standardize text styles and label placement across clinical widgets
-- [x] Update `walkthrough.md` with consolidated UI refinements
+# Requirements - v1.2.15
+
+## Bug Fixes & Action Menu Enhancements
+
+### 1. Plan Persistence Logic
+- **BSON Error Resolution**: Ensure `primaryDoctorId` and stage-level `doctorId` fields are sent as `null` (not `""`) when unassigned, preventing casting errors.
+
+### 2. Terminology Alignment
+- **Stage Labeling**: Rename "Clinical Stages" to "Treatment Stages" in the Treatment Plan view for cross-module consistency.
+
+### 3. Action Menu (3-Dot Dropdown)
+- **Options**: Implement a unified dropdown menu offering:
+    1. **View**: Detailed plan progression.
+    2. **Edit**: Full plan modification.
+    3. **Delete**: Complete plan removal.
+- **Security & Safety**:
+    - **Role Control**: Restriction of the "Delete" action to Clinic Admins only.
+    - **Confirmation Flow**: Integration of a mandatory confirmation dialog warning about data loss before final deletion.
+
+---
+
+# Requirements - v1.3.0
+
+## UI Polish & Enhanced Document Management
+
+### 1. UI Positioning Refinements
+- **Stage Action Menu**: Anchor the 3-dot dropdown menu close to the action button within the Treatment Stages table.
+- **Pricing Logic**: For stages without an assigned budget, display `"-"` instead of `0` to meet industry standards.
+- **Dynamic Financial Visuals**: Ensure the currency icon underlay in the budget card dynamically reflects the clinic's local currency (INR, USD, etc.).
+
+### 2. Treatment Plan View Data Parity
+- **Field Visibility**: Ensure all fields managed in the Edit view are visible in the Detailed View:
+    - **Treatment Area**: Display prominently in the summary.
+    - **Description vs. Notes**: Separate the general plan description from specific clinical notes (avoid merging them).
+    - **Document Repository**: Display a dedicated section for all uploaded documents.
+
+### 3. Advanced Document Management
+- **File System Integration**: Replace manual name prompting with a standard file selection dialog.
+- **Contextual Tagging**: Allow users to tag each document with a **Stage Name** or **Stage Type**.
+- **Bulk Operations**: Support applying a single tag to multiple documents during a simultaneous upload session.
+
+## Technical Tasks (v1.3.0)
+- [ ] Fix popup anchoring in `TreatmentPlansList`
+- [ ] Implement conditional price rendering in `[planId]/page.tsx`
+- [ ] Add separate `notes` field to `TreatmentPlanForm` and View
+- [ ] Refactor document upload with `input type="file"` and tagging state
+- [ ] Sync currency icon in Budget Underlay
+- [ ] Audit view page for Area and Document visibility

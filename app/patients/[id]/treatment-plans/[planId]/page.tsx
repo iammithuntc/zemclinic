@@ -18,7 +18,10 @@ import {
     Search,
     Heart,
     User,
-    Brain
+    Brain,
+    ExternalLink,
+    FileText,
+    ClipboardList
 } from 'lucide-react';
 import { useSettings } from '@/app/contexts/SettingsContext';
 
@@ -63,6 +66,7 @@ interface TreatmentPlan {
     totalBudget?: number;
     progress?: number;
     primaryDoctorId?: string | PopulatedDoctor;
+    notes?: string;
     history?: {
         action: string;
         user: string;
@@ -201,7 +205,24 @@ export default function TreatmentPlanViewPage() {
                         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
                             <div className="p-8">
                                 <div className="p-6 bg-blue-50/50 border border-blue-100 rounded-2xl">
-                                    <p className="text-gray-700 leading-relaxed font-medium">{plan.description || 'No additional clinical notes provided.'}</p>
+                                    <div className="flex flex-col space-y-4">
+                                        <div>
+                                            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Plan Description</p>
+                                            <p className="text-gray-700 leading-relaxed font-medium">{plan.description || 'No description provided.'}</p>
+                                        </div>
+                                        {plan.notes && (
+                                            <div>
+                                                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Clinical Notes</p>
+                                                <p className="text-gray-700 leading-relaxed font-medium">{plan.notes}</p>
+                                            </div>
+                                        )}
+                                        {plan.treatmentArea && (
+                                            <div>
+                                                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Treatment Area</p>
+                                                <p className="text-gray-700 leading-relaxed font-medium">{plan.treatmentArea}</p>
+                                            </div>
+                                        )}
+                                    </div>
                                     <div className="mt-6 flex flex-wrap gap-4">
                                         <div className="px-4 py-2 bg-white border border-gray-100 text-sm font-bold rounded-xl flex items-center shadow-sm">
                                             <Calendar className="h-4 w-4 mr-2 text-blue-500" />
@@ -219,10 +240,10 @@ export default function TreatmentPlanViewPage() {
                                                 End: {formatDate(plan.approxEndDate)}
                                             </div>
                                         )}
-                                        {isAuthorizedForBudget() && plan.totalBudget && (
+                                        {isAuthorizedForBudget() && (
                                             <div className="px-4 py-2 bg-emerald-600 text-white text-sm font-bold rounded-xl flex items-center shadow-md shadow-emerald-100">
                                                 <DollarSign className="h-4 w-4 mr-1" />
-                                                {currencySymbol}{plan.totalBudget.toLocaleString()}
+                                                Budget: {currencySymbol}{plan.totalBudget?.toLocaleString() || '-'}
                                             </div>
                                         )}
                                     </div>
@@ -231,7 +252,7 @@ export default function TreatmentPlanViewPage() {
 
                             <div className="px-8 pb-8">
                                 <div className="flex items-center justify-between mb-6">
-                                    <h3 className="text-xl font-black text-gray-900 uppercase tracking-wider">Clinical Stages</h3>
+                                    <h3 className="text-xl font-black text-gray-900 uppercase tracking-wider">Treatment Stages</h3>
                                     <span className="px-4 py-1.5 bg-gray-100 text-gray-600 text-xs font-black rounded-full uppercase tracking-widest">{plan.progress}% Complete</span>
                                 </div>
                                 <div className="space-y-4">
@@ -259,9 +280,9 @@ export default function TreatmentPlanViewPage() {
                                                 </div>
                                             </div>
                                             <div className="flex items-center space-x-4">
-                                                {isAuthorizedForBudget() && stage.budget && (
+                                                {isAuthorizedForBudget() && (
                                                     <span className="text-sm font-black text-emerald-600">
-                                                        {currencySymbol}{stage.budget.toLocaleString()}
+                                                        {stage.budget && stage.budget > 0 ? `${currencySymbol}${stage.budget.toLocaleString()}` : '-'}
                                                     </span>
                                                 )}
                                                 <div className="flex items-center space-x-2">
@@ -278,6 +299,49 @@ export default function TreatmentPlanViewPage() {
                                     ))}
                                 </div>
                             </div>
+
+                            {/* Documents Repository Section */}
+                            {plan.documents && plan.documents.length > 0 && (
+                                <div className="px-8 pb-8">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-xl font-black text-gray-900 uppercase tracking-wider">Clinical Documents</h3>
+                                        <span className="px-4 py-1.5 bg-gray-100 text-gray-600 text-[10px] font-black rounded-full uppercase tracking-widest">{plan.documents.length} Files</span>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {plan.documents.map((doc, idx) => (
+                                            <div key={idx} className="flex items-center p-4 bg-gray-50 border border-gray-100 rounded-2xl hover:border-blue-200 transition-all group">
+                                                <div className="p-3 bg-white rounded-xl shadow-sm mr-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                                    <FileText className="h-5 w-5" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-bold text-gray-900 truncate">{doc.name}</p>
+                                                    <div className="flex items-center space-x-2 mt-1">
+                                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">
+                                                            {new Date(doc.uploadedAt).toLocaleDateString()}
+                                                        </span>
+                                                        {doc.stageId && (
+                                                            <>
+                                                                <span className="w-1 h-1 rounded-full bg-gray-300" />
+                                                                <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-black rounded uppercase tracking-tighter">
+                                                                    {plan.stages?.find(s => s._id === doc.stageId)?.name || doc.stageId}
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <a
+                                                    href={doc.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
+                                                >
+                                                    <ExternalLink className="h-4 w-4" />
+                                                </a>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -305,6 +369,7 @@ export default function TreatmentPlanViewPage() {
 
                                     {/* Allergies - Full Width */}
                                     <div className="space-y-2">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Known Allergies</p>
                                         <div className="p-4 bg-red-50/50 border border-red-100/50 rounded-2xl">
                                             {patient.allergies && patient.allergies.length > 0 && patient.allergies[0] ? (
                                                 <div className="flex flex-wrap gap-2">
@@ -318,27 +383,26 @@ export default function TreatmentPlanViewPage() {
                                                 <p className="text-xs font-bold text-gray-400">No known allergies reported.</p>
                                             )}
                                         </div>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Known Allergies</p>
                                     </div>
 
                                     {/* Current Medications - Full Width */}
                                     <div className="space-y-2">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Current Medications</p>
                                         <div className="p-4 bg-blue-50/50 border border-blue-100/50 rounded-2xl">
                                             <p className="text-xs text-blue-700 font-bold leading-relaxed">
                                                 {patient.currentMedications?.[0] || 'No active medications documented.'}
                                             </p>
                                         </div>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Current Medications</p>
                                     </div>
 
                                     {/* Medical History Card */}
                                     <div className="space-y-2">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Clinical History</p>
                                         <div className="p-5 bg-white border border-gray-100 rounded-2xl shadow-sm">
                                             <p className="text-xs text-gray-700 font-bold leading-relaxed">
                                                 {patient.medicalHistory?.[0] || 'No critical medical history recorded.'}
                                             </p>
                                         </div>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Clinical History</p>
                                     </div>
 
                                     <Link

@@ -233,3 +233,51 @@ A trilogy of UI/UX updates focused on premium aesthetics and information density
 #### 3. Typography & Style Standardization
 - **Label Consistency**: Standardized all clinical labels to the "Identity format" (labels placed logically below values).
 - **Unified Style Guide**: Enforced strict font weights (**bold**) and sizes (**text-xs**) across all clinical cards, removing inconsistent italics for a professional finish.
+
+---
+
+## [1.2.14] - 2026-03-03
+
+### Summary
+Focus on layout adjustments based on initial clinical feedback regarding information density.
+
+### Refinements
+- **Improved Information Hierarchy**: Repositioned labels for **Known Allergies**, **Current Medications**, and **Clinical History** above the value blocks to improve readability for high-density textual content.
+
+---
+
+## [1.2.15] - 2026-03-03
+
+### Summary
+A maintenance and feature update providing critical bug fixes for plan editing and enhancing management capabilities for Clinic Admins.
+
+### New Features
+#### 1. Plan Action Dropdown
+- **Consolidated Controls**: Replaced the static "Edit" button in the treatment plan list with a multi-action 3-dot menu.
+- **Admin-Controlled Deletion**: Introduced plan deletion capabilities restricted to Administrative staff, complete with a data-loss confirmation bridge.
+
+#### 2. Terminology Alignment
+- **Consistency Refinement**: Standardized internal labeling by renaming "Clinical Stages" to **"Treatment Stages"** throughout the module.
+
+### Bug Fixes
+- **Update Payload Fix**: Resolved a BSON Error that occurred when updating treatment plans with unassigned doctors (mapping empty strings to null ObjectIds).
+
+---
+
+## [1.3.0] - 2026-03-04
+
+### Summary
+A polish and feature update enhancing the document management workflow and clinical data visibility.
+
+### New Features
+#### 1. Enhanced Document Management
+- **File Explorer Integration**: Replaced manual filename prompts with a standard file selection dialog.
+- **Clinical Tagging**: Introduced document tagging, allowing files to be categorized by specific treatment stages or types.
+
+#### 2. Clinical Data Visibility
+- **Detailed View Expansion**: Treatment plans now display **Treatment Area** and separate **Clinical Notes** in the detailed view.
+- **Financial Standards**: Stage pricing now displays `"-"` for unpriced items, following industry standards for clinical software.
+
+### Refinements
+- **UI Anchoring**: Fixed the 3-dot menu positioning in the Treatment Stages table to ensure it appears adjacent to the trigger button.
+- **Dynamic Localization**: The budget card's background icon now dynamically updates based on the clinic's preferred currency (INR/USD/etc.).
