@@ -37,7 +37,7 @@ interface PlanStage {
     name: string;
     sequenceNumber: number;
     shortDescription?: string;
-    status: 'NOT_STARTED' | 'SCHEDULED' | 'IN_PROGRESS' | 'DONE' | 'SKIPPED';
+    status: 'NOT_STARTED' | 'SCHEDULED' | 'IN_PROGRESS' | 'DONE' | 'SKIPPED' | 'ON_GOING' | 'COMPLETED';
     tentativeDate?: string;
     appointmentId?: string;
     appointments?: string[];
@@ -46,6 +46,9 @@ interface PlanStage {
     doctorName?: string;
     stageType?: string;
     budget?: number;
+    verifiedBy?: string;
+    verifiedByName?: string;
+    verifiedAt?: string;
 }
 
 interface TreatmentPlan {
@@ -135,6 +138,78 @@ export default function TreatmentPlanViewPage() {
         if (!dateString) return '-';
         const date = new Date(dateString);
         return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+    };
+
+    const handleVerifyStage = async (stage: PlanStage) => {
+        if (!isAuthorizedForBudget()) return;
+        if (!confirm(`Verify stage "${stage.name}"? This action will be logged.`)) return;
+
+        try {
+            const res = await fetch(`/api/treatment-plans/${planId}/stages/${stage._id}/verify`, {
+                method: 'POST',
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                // Update plan state with the updated stage
+                setPlan(prev => {
+                    if (!prev || !prev.stages) return prev;
+                    return {
+                        ...prev,
+                        stages: prev.stages.map(s => s._id === stage._id ? data.stage : s),
+                        history: data.updatedHistory || prev.history
+                    };
+                });
+                setSelectedStage(data.stage);
+            } else {
+                const err = await res.json();
+                alert(`Error: ${err.error || 'Failed to verify stage'}`);
+            }
+        } catch (error) {
+            console.error('Error verifying stage:', error);
+            alert('Failed to verify stage');
+        }
+    };
+
+    const handleStatusChange = async (stage: PlanStage, newStatus: string) => {
+        try {
+            const res = await fetch(`/api/treatment-plans/${planId}/stages/${stage._id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ status: newStatus }),
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setPlan(prev => {
+                    if (!prev || !prev.stages) return prev;
+                    return {
+                        ...prev,
+                        stages: prev.stages.map(s => s._id === stage._id ? data.stage : s),
+                        // Refresh history if the API returns updated history
+                        history: data.updatedHistory || prev.history
+                    };
+                });
+                setSelectedStage(data.stage);
+                router.refresh(); // Refresh for any other components
+            } else {
+                const err = await res.json();
+                alert(`Error: ${err.error || 'Failed to update status'}`);
+            }
+        } catch (error) {
+            console.error('Error updating status:', error);
+            alert('Failed to update status');
+        }
+    };
+
+    const isAuthorizedForStage = (stage: PlanStage) => {
+        if (!session?.user || !plan) return false;
+        if (session.user.role === 'admin') return true;
+
+        const primDocId = typeof plan.primaryDoctorId === 'object' ? plan.primaryDoctorId?._id : plan.primaryDoctorId;
+        if (primDocId === session.user.id) return true;
+
+        const stageDocId = typeof stage.doctorId === 'object' ? stage.doctorId?._id : stage.doctorId;
+        return stageDocId === session.user.id;
     };
 
     if (loading) {
@@ -240,12 +315,16 @@ export default function TreatmentPlanViewPage() {
                                                 End: {formatDate(plan.approxEndDate)}
                                             </div>
                                         )}
-                                        {isAuthorizedForBudget() && (
+                                        {isAuthorizedForBudget() && plan.totalBudget && plan.totalBudget > 0 ? (
                                             <div className="px-4 py-2 bg-emerald-600 text-white text-sm font-bold rounded-xl flex items-center shadow-md shadow-emerald-100">
-                                                <DollarSign className="h-4 w-4 mr-1" />
-                                                Budget: {currencySymbol}{plan.totalBudget?.toLocaleString() || '-'}
+                                                <TrendingUp className="h-4 w-4 mr-2" />
+                                                Budget: {currencySymbol}{plan.totalBudget.toLocaleString()}
                                             </div>
-                                        )}
+                                        ) : isAuthorizedForBudget() ? (
+                                            <div className="px-4 py-2 bg-gray-100 text-gray-500 text-sm font-bold rounded-xl flex items-center shadow-sm">
+                                                Budget: -
+                                            </div>
+                                        ) : null}
                                     </div>
                                 </div>
                             </div>
@@ -481,17 +560,72 @@ export default function TreatmentPlanViewPage() {
                                 <LucideX className="h-6 w-6" />
                             </button>
                         </div>
-                        <div className="p-8 space-y-6">
+                        <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Status</p>
-                                    <p className="text-sm font-black text-gray-900 mt-1">{selectedStage.status.replace('_', ' ')}</p>
+                                    <div className="flex flex-col space-y-2 mt-1">
+                                        {isAuthorizedForStage(selectedStage) ? (
+                                            <select
+                                                className="w-full bg-white border border-gray-100 rounded-lg px-2 py-1 text-sm font-black focus:border-blue-300 outline-none transition-all"
+                                                value={selectedStage.status}
+                                                onChange={(e) => handleStatusChange(selectedStage, e.target.value)}
+                                            >
+                                                <optgroup label="Default Statuses">
+                                                    <option value="NOT_STARTED">NOT STARTED</option>
+                                                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                                                    <option value="COMPLETED">COMPLETED</option>
+                                                </optgroup>
+                                                {settings?.customStageStatuses && settings.customStageStatuses.length > 0 && (
+                                                    <optgroup label="Custom Statuses">
+                                                        {settings.customStageStatuses.map((s, i) => (
+                                                            <option key={i} value={s}>{s}</option>
+                                                        ))}
+                                                    </optgroup>
+                                                )}
+                                            </select>
+                                        ) : (
+                                            <p className="text-sm font-black text-gray-900">{selectedStage.status.replace('_', ' ')}</p>
+                                        )}
+                                        {selectedStage.verifiedAt && (
+                                            <span className="w-fit px-2 py-0.5 bg-green-600 text-white text-[8px] font-black rounded uppercase tracking-wider flex items-center">
+                                                <CheckCircle2 className="h-2 w-2 mr-1" /> VERIFIED
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Doctor</p>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Assigned Doctor</p>
                                     <p className="text-sm font-black text-blue-600 mt-1">{getDoctorName(selectedStage)}</p>
                                 </div>
                             </div>
+
+                            {/* Verification Badge/Action */}
+                            {settings?.enableStageVerification && (
+                                <div className={`p-6 rounded-2xl border-2 ${selectedStage.verifiedAt ? 'bg-green-50 border-green-100' : 'bg-orange-50 border-orange-100 border-dashed'}`}>
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <p className={`text-[10px] font-black uppercase tracking-widest ${selectedStage.verifiedAt ? 'text-green-600' : 'text-orange-600'}`}>
+                                                Clinical Verification
+                                            </p>
+                                            <p className="text-xs font-bold text-gray-600 mt-1">
+                                                {selectedStage.verifiedAt
+                                                    ? `Verified by ${selectedStage.verifiedByName} on ${new Date(selectedStage.verifiedAt).toLocaleString()}`
+                                                    : 'Requires clinical oversight'
+                                                }
+                                            </p>
+                                        </div>
+                                        {!selectedStage.verifiedAt && (selectedStage.status === 'COMPLETED' || selectedStage.status === 'DONE') && isAuthorizedForBudget() && (
+                                            <button
+                                                onClick={() => handleVerifyStage(selectedStage)}
+                                                className="px-4 py-2 bg-white text-orange-600 border border-orange-200 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-orange-600 hover:text-white transition-all shadow-sm"
+                                            >
+                                                Verify Now
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
                             {selectedStage.stageType && (
                                 <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center justify-between">

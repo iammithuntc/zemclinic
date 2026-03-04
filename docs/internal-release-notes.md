@@ -281,3 +281,63 @@ A polish and feature update enhancing the document management workflow and clini
 ### Refinements
 - **UI Anchoring**: Fixed the 3-dot menu positioning in the Treatment Stages table to ensure it appears adjacent to the trigger button.
 - **Dynamic Localization**: The budget card's background icon now dynamically updates based on the clinic's preferred currency (INR/USD/etc.).
+
+---
+
+## [1.4.0] - 2026-03-04
+
+### Summary
+Version 1.4.0 introduces a comprehensive Stage Verification system and advanced status management to enhance clinical accountability.
+
+### New Features
+#### 1. Clinical Stage Verification
+- **Verification Workflow**: Admins and In-Charge doctors can now verify completed stages to confirm treatment accuracy.
+- **Verification Details**: Verified stages display a "VERIFIED" badge with user and timestamp details in the plan view.
+- **Toggleable Safety**: Verification can be enabled or disabled globally in the clinic settings.
+
+#### 2. Advanced Status & Customization
+- **Lifecycle Expansion**: Added "ON_GOING" and "COMPLETED" as native lifecycle states.
+- **Custom Status Management**: Admins can now define custom stage statuses (e.g., "Awaiting Lab") in the Settings dashboard.
+
+### Technical Improvements
+- **Model Evolution**: Updated `PlanStage` and `Settings` schemas to support verification meta-data and custom status arrays.
+- **Audit Hardening**: Integrated verification events and status changes into the treatment plan's history log.
+
+### Bug Fixes
+- Fixed inconsistent currency symbols in the plan budget summary.
+- Resolved CSS clipping for the stage-level 3-dot action menu.
+
+---
+
+## [1.4.1] - 2026-03-04
+
+### Summary
+A maintenance release focusing on stability and UX refinements for the action menu and status workflow.
+
+### Bug Fixes & Refinements
+#### 1. Stability: Doctor Null Safety
+- Resolved a critical runtime error in `TreatmentPlanForm` that occurred when editing plans with unassigned doctors (`Cannot read properties of null (reading '_id')`).
+
+#### 2. Workflow: Status Simplification
+- Streamlined the default status dropdown to strictly include **NOT STARTED**, **IN PROGRESS**, and **COMPLETED** for a cleaner, more focused experience.
+
+#### 3. UX: Action Menu Enhancements
+- **Global Click Listener**: Implemented logic to automatically close action menus when clicking outside the menu area.
+- **Z-Index Optimization**: Resolved layering issues for the first row of treatment stages; active plan cards now dynamically elevate their z-index to overlay subsequent elements.
+
+---
+
+## [1.4.2] - 2026-03-04
+
+### Summary
+A maintenance release restoring critical functionality for settings persistence and menu interactions.
+
+### Bug Fixes & Refinements
+#### 1. Stability: Settings Persistence
+- Fixed a bug where clinical settings (Verification toggle, etc.) would fail to save. The system now sanitizes the update payload to prevent database conflicts with read-only fields.
+
+#### 2. UX: Menu Responsiveness
+- Restored action menu functionality in the Treatment Summary list. Enhanced the click-outside logic to correctly identify triggers and containers, resolving the state-reset issue.
+
+#### 3. Data: Progress Logic
+- Updated the treatment plan progress algorithm to include `COMPLETED` and `ON_GOING` statuses, providing a more accurate representation of treatment status.

@@ -52,6 +52,8 @@ interface Settings {
     passwordMinLength: number;
     requireTwoFactor: boolean;
   };
+  enableStageVerification: boolean;
+  customStageStatuses: string[];
 }
 
 interface SettingsContextType {
@@ -110,6 +112,8 @@ const defaultSettings: Settings = {
     passwordMinLength: 8,
     requireTwoFactor: false,
   },
+  enableStageVerification: false,
+  customStageStatuses: [],
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -141,12 +145,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   const updateSettings = async (updates: Partial<Settings>) => {
     try {
+      // Sanitize updates to remove immutable/internal fields
+      const { _id, createdAt, updatedAt, __v, ...sanitizedUpdates } = updates as any;
+
       const response = await fetch('/api/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updates),
+        body: JSON.stringify(sanitizedUpdates),
       });
 
       if (response.ok) {

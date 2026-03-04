@@ -50,6 +50,8 @@ export interface ISettings {
     passwordMinLength: number;
     requireTwoFactor: boolean;
   };
+  enableStageVerification: boolean;
+  customStageStatuses: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -173,6 +175,14 @@ const settingsSchema = new mongoose.Schema<ISettings>(
       passwordMinLength: { type: Number, default: 8 },
       requireTwoFactor: { type: Boolean, default: false },
     },
+    enableStageVerification: {
+      type: Boolean,
+      default: false,
+    },
+    customStageStatuses: [{
+      type: String,
+      trim: true,
+    }],
   },
   {
     timestamps: true,

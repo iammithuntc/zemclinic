@@ -137,4 +137,26 @@
 ## Phase 21: Enhanced Assets Management
 - **File Uploader Overhaul**: Transitions from `prompt`-based metadata to standard file selection.
 - **Metadata Tagging**: Implementing a tagging system for documents linked to specific stages or categories.
-- **Financial Visuals**: Hardening the dynamic currency system to ensure persistent localization in all visual underlays.
+---
+
+# Development Plan - v1.4.0
+
+## Phase 22: Advanced Status Workflow
+- **Data Hardening**: Update `PlanStage` schema with `COMPLETED`, `ON_GOING`, and `customStatus` fields.
+- **Dynamic Statuses**: Integrate admin-defined custom statuses from `Settings` into the stage lifecycle.
+- **Financial Refinement**: Standardize budget displays in the detailed view and resolve local currency conflicts.
+
+## Phase 23: Stage Verification System
+- **Authorized Oversight**: Develop a verification middleware/module for stage finalizing by Admins/In-charge docs.
+- **Evidence Tracking**: Ensure all verification events (who, when, details) are captured and displayed in the primary audit interface.
+- **UI Overflow Polish**: Solve persistent clipping issues in the Treatment Stages summary and action menus.
+
+---
+
+# Development Plan - v1.4.1
+
+## Phase 24: Critical Stability & Accessibility
+- **Doctor Null Guard**: Refactor stage-to-form mapping to ensure unassigned `doctorId` and `doctorName` fields are handled safely, preventing runtime crashes.
+- **Action Menu Continuity**: Implement global event listeners for `mousedown`/`click` to enable intuitive click-outside closing of stage and plan menus.
+- **Dynamic information Priority**: Implement conditional `z-index` elevation for the active treatment plan card to ensure menus correctly overlay all sibling elements, particularly on the first row of a high-density list.
+- **Workflow Streamlining**: Update `TreatmentPlanForm` and `TreatmentPlanView` to reflect the simplified "Primary Three" status model (NOT STARTED, IN PROGRESS, COMPLETED).

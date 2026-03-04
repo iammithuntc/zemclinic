@@ -6,7 +6,8 @@ export interface IPlanStage extends Document {
     sequenceNumber: number;
     shortDescription?: string;
     tentativeDate?: Date;
-    status: 'NOT_STARTED' | 'SCHEDULED' | 'IN_PROGRESS' | 'DONE' | 'SKIPPED';
+    status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | string;
+    customStatus?: string;
     appointmentId?: mongoose.Schema.Types.ObjectId;
     appointments?: mongoose.Schema.Types.ObjectId[];
     encounterId?: mongoose.Schema.Types.ObjectId;
@@ -17,6 +18,9 @@ export interface IPlanStage extends Document {
     budget?: number;
     notes?: string;
     completedAt?: Date;
+    verifiedBy?: mongoose.Schema.Types.ObjectId;
+    verifiedByName?: string;
+    verifiedAt?: Date;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -47,8 +51,11 @@ const PlanStageSchema: Schema = new Schema(
         },
         status: {
             type: String,
-            enum: ['NOT_STARTED', 'SCHEDULED', 'IN_PROGRESS', 'DONE', 'SKIPPED'],
             default: 'NOT_STARTED',
+        },
+        customStatus: {
+            type: String,
+            trim: true,
         },
         appointmentId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -87,6 +94,17 @@ const PlanStageSchema: Schema = new Schema(
             trim: true,
         },
         completedAt: {
+            type: Date,
+        },
+        verifiedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+        },
+        verifiedByName: {
+            type: String,
+            trim: true,
+        },
+        verifiedAt: {
             type: Date,
         },
     },

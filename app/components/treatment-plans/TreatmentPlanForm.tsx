@@ -70,8 +70,8 @@ export default function TreatmentPlanForm({ patientId, initialData, isEdit = fal
             _id: s._id,
             name: s.name,
             shortDescription: s.shortDescription || '',
-            doctorId: typeof s.doctorId === 'object' ? s.doctorId._id : (s.doctorId || ''),
-            doctorName: typeof s.doctorId === 'object' ? s.doctorId.name : (s.doctorName || ''),
+            doctorId: s.doctorId ? (typeof s.doctorId === 'object' ? s.doctorId._id : s.doctorId) : '',
+            doctorName: s.doctorId ? (typeof s.doctorId === 'object' ? s.doctorId.name : s.doctorName) : '',
             stageType: s.stageType || '',
             budget: s.budget || 0,
             status: s.status || 'NOT_STARTED'
@@ -528,9 +528,33 @@ export default function TreatmentPlanForm({ patientId, initialData, isEdit = fal
                                                 />
                                             </div>
                                         )}
-                                        <div className="w-full md:w-40">
+                                        <div className="w-full md:w-32">
                                             <select
-                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded-lg text-xs font-bold focus:bg-white focus:border-blue-200 outline-none transition-all"
+                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded-lg text-[10px] font-black focus:bg-white focus:border-blue-200 outline-none transition-all"
+                                                value={stage.status || 'NOT_STARTED'}
+                                                onChange={(e) => {
+                                                    const ns = [...formData.stages];
+                                                    ns[idx].status = e.target.value;
+                                                    setFormData({ ...formData, stages: ns });
+                                                }}
+                                            >
+                                                <optgroup label="Default">
+                                                    <option value="NOT_STARTED">NOT STARTED</option>
+                                                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                                                    <option value="COMPLETED">COMPLETED</option>
+                                                </optgroup>
+                                                {settings?.customStageStatuses && settings.customStageStatuses.length > 0 && (
+                                                    <optgroup label="Custom">
+                                                        {settings.customStageStatuses.map((s, i) => (
+                                                            <option key={i} value={s}>{s}</option>
+                                                        ))}
+                                                    </optgroup>
+                                                )}
+                                            </select>
+                                        </div>
+                                        <div className="w-full md:w-32">
+                                            <select
+                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded-lg text-[10px] font-black focus:bg-white focus:border-blue-200 outline-none transition-all"
                                                 value={stage.stageType || ''}
                                                 onChange={(e) => {
                                                     const ns = [...formData.stages];

@@ -36,7 +36,7 @@ interface PlanStage {
     name: string;
     sequenceNumber: number;
     shortDescription?: string;
-    status: 'NOT_STARTED' | 'SCHEDULED' | 'IN_PROGRESS' | 'DONE' | 'SKIPPED';
+    status: 'NOT_STARTED' | 'SCHEDULED' | 'IN_PROGRESS' | 'DONE' | 'SKIPPED' | 'ON_GOING' | 'COMPLETED';
     tentativeDate?: string;
     appointmentId?: string;
     appointments?: string[];
@@ -100,6 +100,20 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
         fetchPlans();
     }, [patientId]);
 
+    // Click outside handler for menus
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            // If the click is on a menu trigger button or inside an open menu, don't close
+            if (target.closest('.menu-trigger') || target.closest('.menu-container')) {
+                return;
+            }
+            setShowStageMenu(null);
+            setShowPlanMenu(null);
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
 
     const fetchPlans = async () => {
         try {
@@ -114,8 +128,17 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
                     if (stageRes.ok) {
                         const stageData = await stageRes.json();
                         const stages = stageData.stages as PlanStage[];
-                        const doneCount = stages.filter((s: PlanStage) => s.status === 'DONE').length;
-                        const progress = stages.length > 0 ? Math.round((doneCount / stages.length) * 100) : 0;
+
+                        // Improved progress calculation:
+                        // DONE or COMPLETED = 1.0
+                        // IN_PROGRESS or ON_GOING = 0.5
+                        const progressSum = stages.reduce((acc: number, s: PlanStage) => {
+                            if (s.status === 'DONE' || s.status === 'COMPLETED') return acc + 1;
+                            if (s.status === 'IN_PROGRESS' || s.status === 'ON_GOING') return acc + 0.5;
+                            return acc;
+                        }, 0);
+
+                        const progress = stages.length > 0 ? Math.round((progressSum / stages.length) * 100) : 0;
                         return { ...plan, stages, progress };
                     }
                     return { ...plan, stages: [], progress: 0 };
@@ -188,12 +211,18 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
 
     const getStatusIcon = (status: string) => {
         switch (status) {
-            case 'DONE': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-            case 'SCHEDULED': return <Calendar className="h-4 w-4 text-blue-500" />;
-            case 'IN_PROGRESS': return <Clock className="h-4 w-4 text-orange-500" />;
-            case 'NOT_STARTED': return <Clock className="h-4 w-4 text-gray-400" />;
-            case 'SKIPPED': return <AlertCircle className="h-4 w-4 text-red-400" />;
-            default: return <Clock className="h-4 w-4 text-gray-400" />;
+            case 'DONE':
+            case 'COMPLETED':
+                return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+            case 'IN_PROGRESS':
+            case 'ON_GOING':
+                return <Clock className="h-4 w-4 text-orange-500" />;
+            case 'SCHEDULED':
+                return <Calendar className="h-4 w-4 text-blue-500" />;
+            case 'SKIPPED':
+                return <LucideX className="h-4 w-4 text-gray-400" />;
+            default:
+                return <Clock className="h-4 w-4 text-gray-400" />;
         }
     };
 
@@ -251,7 +280,7 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
             ) : (
                 <div className="grid grid-cols-1 gap-6">
                     {plans.map((plan) => (
-                        <div key={plan._id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                        <div key={plan._id} className={`relative group p-6 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-blue-200 transition-all ${showPlanMenu === plan._id || plan.stages?.some(s => showStageMenu === s._id) ? 'z-[60]' : 'z-20'}`}>
                             <div className="p-5 border-b border-gray-100 bg-gray-50/50">
                                 <div className="flex justify-between items-start">
                                     <div className="flex items-center space-x-3">
@@ -312,9 +341,10 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
+                                                    e.nativeEvent.stopImmediatePropagation();
                                                     setShowPlanMenu(showPlanMenu === plan._id ? null : plan._id);
                                                 }}
-                                                className="p-1.5 hover:bg-gray-200 rounded-full transition-colors"
+                                                className="p-1.5 hover:bg-gray-200 rounded-full transition-colors menu-trigger"
                                             >
                                                 <MoreVertical className="h-5 w-5 text-gray-400" />
                                             </button>
@@ -325,7 +355,7 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
                                                         className="fixed inset-0 z-[70]"
                                                         onClick={() => setShowPlanMenu(null)}
                                                     />
-                                                    <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-gray-100 z-[80] py-1 text-left animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden">
+                                                    <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-gray-100 z-[80] py-1 text-left animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden menu-container">
                                                         <button
                                                             onClick={() => router.push(`/patients/${patientId}/treatment-plans/${plan._id}`)}
                                                             className="w-full px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center font-bold"
@@ -401,8 +431,11 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
                                                     <td className="px-6 py-3 whitespace-nowrap">
                                                         <div className="flex items-center space-x-2">
                                                             {getStatusIcon(stage.status)}
-                                                            <span className="text-xs font-medium capitalize text-gray-700">
-                                                                {stage.status.replace('_', ' ').toLowerCase()}
+                                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${stage.status === 'DONE' || stage.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                                                                stage.status === 'IN_PROGRESS' || stage.status === 'ON_GOING' ? 'bg-orange-100 text-orange-700' :
+                                                                    'bg-gray-100 text-gray-500'
+                                                                }`}>
+                                                                {stage.status.replace('_', ' ')}
                                                             </span>
                                                         </div>
                                                     </td>
@@ -418,15 +451,16 @@ export default function TreatmentPlansList({ patientId }: TreatmentPlansListProp
                                                                 <button
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
+                                                                        e.nativeEvent.stopImmediatePropagation();
                                                                         setShowStageMenu(showStageMenu === stage._id ? null : stage._id);
                                                                     }}
-                                                                    className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                                                    className="p-1 hover:bg-gray-100 rounded transition-colors menu-trigger"
                                                                 >
                                                                     <MoreVertical className="h-4 w-4 text-gray-400" />
                                                                 </button>
 
                                                                 {showStageMenu === stage._id && (
-                                                                    <div className="absolute right-0 mt-1 w-36 bg-white rounded-lg shadow-xl border border-gray-100 z-[60] py-1 text-left animate-in fade-in slide-in-from-top-2 duration-200">
+                                                                    <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-lg shadow-xl border border-gray-100 z-[90] py-1 text-left animate-in fade-in slide-in-from-top-2 duration-200 menu-container">
                                                                         <button
                                                                             onClick={() => { setSelectedStageForView(stage); setShowStageMenu(null); }}
                                                                             className="w-full px-4 py-2 text-xs text-gray-700 hover:bg-gray-50 flex items-center"

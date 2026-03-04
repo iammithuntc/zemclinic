@@ -24,7 +24,8 @@ import {
     Globe,
     Palette,
     Layers,
-    Trash2
+    Trash2,
+    X
 } from 'lucide-react';
 
 const currencies = [
@@ -737,14 +738,24 @@ export default function SettingsClient() {
                                             <label htmlFor="systemDescription" className="block text-sm font-medium text-gray-700 mb-1">
                                                 {t('settings.general.systemDescription')}
                                             </label>
-                                            <textarea
-                                                id="systemDescription"
-                                                name="systemDescription"
-                                                value={formData.systemDescription || ''}
-                                                onChange={handleInputChange}
-                                                rows={3}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            />
+                                            <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <label htmlFor="enableStageVerification" className="text-sm font-black text-blue-900 uppercase tracking-tight">
+                                                            Enable Treatment Stage Verification
+                                                        </label>
+                                                        <p className="text-xs text-blue-600 font-medium">Require in-charge doctors to verify completed stages</p>
+                                                    </div>
+                                                    <input
+                                                        type="checkbox"
+                                                        id="enableStageVerification"
+                                                        name="enableStageVerification"
+                                                        checked={formData.enableStageVerification || false}
+                                                        onChange={handleInputChange}
+                                                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded-md"
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -1112,6 +1123,60 @@ export default function SettingsClient() {
                                                     ))}
                                                 </div>
                                             )}
+                                        </div>
+
+                                        <div className="pt-8 border-t border-gray-100">
+                                            <div className="flex items-center space-x-4 mb-8">
+                                                <div className="p-3 bg-orange-100 rounded-2xl">
+                                                    <RotateCcw className="h-6 w-6 text-orange-600" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-xl font-black text-gray-900">Custom Stage Statuses</h3>
+                                                    <p className="text-sm text-gray-500 font-medium">Manage additional statuses for treatment stages</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-gray-50 rounded-2xl border border-gray-100 p-6 mb-6">
+                                                <div className="flex gap-4">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Add custom status (e.g. Awaiting Lab)"
+                                                        className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-orange-500 outline-none"
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                const val = (e.target as HTMLInputElement).value;
+                                                                if (val) {
+                                                                    setFormData((prev: any) => ({
+                                                                        ...prev,
+                                                                        customStageStatuses: [...(prev.customStageStatuses || []), val]
+                                                                    }));
+                                                                    (e.target as HTMLInputElement).value = '';
+                                                                }
+                                                            }
+                                                        }}
+                                                    />
+                                                    <p className="text-[10px] text-gray-400 font-bold self-center">Press Enter to add</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-wrap gap-2">
+                                                {formData.customStageStatuses?.map((s: string, i: number) => (
+                                                    <div key={i} className="flex items-center px-4 py-2 bg-white border border-gray-200 rounded-xl shadow-sm text-xs font-black text-gray-700">
+                                                        <span>{s}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFormData((prev: any) => ({
+                                                                ...prev,
+                                                                customStageStatuses: prev.customStageStatuses.filter((_: any, idx: number) => idx !== i)
+                                                            }))}
+                                                            className="ml-3 text-gray-300 hover:text-red-500"
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                 )}

@@ -272,9 +272,54 @@
 - **Bulk Operations**: Support applying a single tag to multiple documents during a simultaneous upload session.
 
 ## Technical Tasks (v1.3.0)
-- [ ] Fix popup anchoring in `TreatmentPlansList`
-- [ ] Implement conditional price rendering in `[planId]/page.tsx`
-- [ ] Add separate `notes` field to `TreatmentPlanForm` and View
-- [ ] Refactor document upload with `input type="file"` and tagging state
-- [ ] Sync currency icon in Budget Underlay
-- [ ] Audit view page for Area and Document visibility
+- [x] Fix popup anchoring in `TreatmentPlansList`
+- [x] Implement conditional price rendering in `[planId]/page.tsx`
+- [x] Add separate `notes` field to `TreatmentPlanForm` and View
+- [x] Refactor document upload with `input type="file"` and tagging state
+- [x] Sync currency icon in Budget Underlay
+- [x] Audit view page for Area and Document visibility
+
+---
+
+# Requirements - v1.4.0
+
+## Status Workflow & Verification System
+
+### 1. Financial Display Standards
+- **Currency Fix**: Remove hardcoded dollar/redundant symbols. Only show the configured currency (e.g., ₹ if INR).
+- **Budget Visibility**: If no budget is assigned (`0` or `null`), show nothing or `"-"`. Avoid `0 INR` or similar.
+
+### 2. Action Menu Visibility
+- **Clipping Fix**: Ensure the 3-dot action menu in the stages list is fully visible and not clipped by table containers or rows.
+
+### 3. Advanced Status Management
+- **Lifecycle Defaults**: Add **COMPLETED** and **ON_GOING** as core default statuses.
+- **Custom Statuses**: Support admin-defined custom statuses for treatment stages.
+- **Role Control**: Statuses can be switched by the in-charge doctor or assigned doctors.
+- **Audit Compliance**: Log every status change in the treatment plan audit history.
+
+### 4. Stage Verification System
+- **Verification Rule**: Option in settings to require verification for "COMPLETED" stages.
+- **Authorized Verifiers**: Only Clinic Admins or the In-Charge Doctor can verify stages.
+- **Tracking**: Log `UserID`, `Name`, `Date`, and `Time` of verification. Display these details in the plan view.
+
+## Technical Tasks (v1.4.0)
+- [ ] Update `PlanStage` schema with verification and custom status fields
+- [ ] Update `Settings` schema for verification toggle and custom status list
+- [ ] Implement stage verification API
+- [ ] Refactor budget rendering in `[planId]/page.tsx`
+- [ ] Resolve CSS clipping in `TreatmentPlansList.tsx`
+- [x] Integrate custom statuses into dropdowns and logic
+
+## v1.4.1 Requirements: Bug Fixes & Refinements
+- **Fix Form Crash**: Add null checks for `doctorId` in `TreatmentPlanForm.tsx` to prevent crash when doctor is unassigned.
+- **Status Workflow Simplification**: Limit default statuses to "NOT STARTED", "IN PROGRESS", "COMPLETED".
+- **Action Menu UX**:
+    - Implement click-outside listener to close action menus.
+    - Fix z-index priority for the first row of treatment plans.
+    - Ensure dynamic Raising of z-index for active plan cards.
+
+## v1.4.2 Requirements: Stability & UX Polish
+- [x] **Fix Settings Persistence**: Sanitize `updateSettings` payload to remove immutable fields (`_id`, `createdAt`).
+- [x] **Restore Action Menus**: Correct click-outside logic and event propagation in `TreatmentPlansList`.
+- [x] **Update Progress Logic**: Include `COMPLETED` and `ON_GOING` in the overall plan progress calculation.
